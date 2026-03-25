@@ -118,7 +118,8 @@ static void gerar_sinais_beq(SinaisDeControle *sinais_de_controle) {
     sinais_de_controle->reg_destino = 0; // Não importa para beq
     sinais_de_controle->jump = 0; 
     sinais_de_controle->branch = 1; // Habilita o controle de desvio
-    gerar_sinais_default_i(sinais_de_controle); 
+    sinais_de_controle->ula_fonte = 0; // O segundo operando vem do imediato
+    sinais_de_controle->incremento_pc = 1; // Incrementa o PC normalmente
 }
 static void gerar_sinais_jump(SinaisDeControle *sinais_de_controle) {
     sinais_de_controle->controle_ula = JUMP; // Não importa para jump
@@ -126,7 +127,7 @@ static void gerar_sinais_jump(SinaisDeControle *sinais_de_controle) {
     sinais_de_controle->escrever_reg = 0; 
     sinais_de_controle->memoria_para_reg = 0; // Não importa para jump
     sinais_de_controle->reg_destino = 0; // Não importa para jump
-    sinais_de_controle->incremento_pc = 0; // O PC é atualizado com o endereço de salto, não incrementado normalmente
+    sinais_de_controle->incremento_pc = 1; //
     sinais_de_controle->jump = 1; // Habilita o controle de salto
     sinais_de_controle->branch = 0; // Não é uma instrução de desvio
 }

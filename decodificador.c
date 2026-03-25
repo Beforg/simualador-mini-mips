@@ -36,7 +36,7 @@ static void decodificar(
 
 InstrucaoDecodificada decodificar_instrucao(uint16_t instrucao)
 {
-    InstrucaoDecodificada instrucao_decodificada;
+    InstrucaoDecodificada instrucao_decodificada = {0};
     TipoInstrucao tipo_instrucao = determinar_tipo_instrucao(obter_opcode(instrucao));
     decodificar(&instrucao_decodificada, tipo_instrucao, instrucao);
 

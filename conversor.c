@@ -17,7 +17,7 @@ void int8_para_binario(int8_t valor) {
 		binario[7 - posicao_bit] = (valor & (1 << posicao_bit)) ? '1' : '0';
 	}
 	
-	binario[9] = '\0';
+	binario[8] = '\0';
 	//printf("%s BINARIO\n %i DECIMAL", binario, valor);
     printf("%s\n", binario);
 }
