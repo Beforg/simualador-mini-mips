@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include "types.h"
-
+#include "decodificador.h"
 
 static void iniciar_cpu(CPU *cpu);
 static void executrar_ciclo(CPU *cpu);
 static uint16_t buscar_instrucao(const CPU *cpu);
+
+/* Funções de debug */
+static void debug(InstrucaoDecodificada instrucao_decodificada);
 
 
 
@@ -43,7 +46,7 @@ static void iniciar_cpu(CPU *cpu) {
 
 static void executrar_ciclo(CPU *cpu) {
 	uint16_t instrucao;
-   // InstrucaoDecodificada instrucao_decodificada;
+    InstrucaoDecodificada instrucao_decodificada;
    // SinaisDeControle sinais_de_controle;
    // uint16_t operador_a;
    // uint16_t operador_b;
@@ -53,9 +56,12 @@ static void executrar_ciclo(CPU *cpu) {
    
 	//buscar instrucao
 	instrucao = buscar_instrucao(cpu);
-	printf("instrucao: %u", instrucao);
+	//
+	printf("instrucao: %u\n\n", instrucao);
 	//decodificar instrucao
-	
+	instrucao_decodificada = decodificar_instrucao(instrucao);
+	debug(instrucao_decodificada);
+	cpu->pc += 1; // teste
 	//operadores
 	
 	// extensao sinal
@@ -65,5 +71,16 @@ static void executrar_ciclo(CPU *cpu) {
 
 static  uint16_t buscar_instrucao(const CPU *cpu) {
 	return cpu->memoria_de_instrucao[cpu->pc];
+}
+
+static void debug(InstrucaoDecodificada instrucao_decodificada) {
+	printf("Tipo: %u\n", instrucao_decodificada.tipo);
+	printf("Opcode: %u\n", instrucao_decodificada.opcode);
+	printf("RS: %u\n", instrucao_decodificada.rs);
+	printf("RT: %u\n", instrucao_decodificada.rt);
+	printf("RD: %u\n", instrucao_decodificada.rd);
+	printf("Funct: %u\n", instrucao_decodificada.funct);
+	printf("Imediato: %d\n", instrucao_decodificada.imediato);
+	printf("Endereco: %u\n", instrucao_decodificada.endereco);
 }
 
