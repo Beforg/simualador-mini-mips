@@ -48,6 +48,7 @@ static void ler_arquivo_de_instrucoes(FILE *file, uint16_t *memoria_de_instrucoe
 
     fclose(file);
     printf("Carga finalizada. %d instrucoes carregadas.\n", posicao_atual_memoria_de_instrucoes);
+	printf("Instrucao atual: %u\n\n", memoria_de_instrucoes[0]);
 }
 
 static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao) {

@@ -7,7 +7,8 @@ void int16_para_binario(int16_t valor) {
         binario[15 - posicao_bit] = (valor & (1 << posicao_bit)) ? '1' : '0';
     }
     binario[16] = '\0';
-    printf("%s BINARIO | %i DECIMAL\n", binario, valor);
+    //printf("%s BINARIO | %i DECIMAL\n", binario, valor);
+    printf("%s\n", binario);
 }
 
 void int8_para_binario(int8_t valor) {
@@ -17,7 +18,8 @@ void int8_para_binario(int8_t valor) {
 	}
 	
 	binario[9] = '\0';
-	printf("%s BINARIO\n %i DECIMAL", binario, valor);
+	//printf("%s BINARIO\n %i DECIMAL", binario, valor);
+    printf("%s\n", binario);
 }
 
 int8_t binario_para_int8(const char *binario) {
