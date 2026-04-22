@@ -13,10 +13,10 @@ typedef enum {
 typedef enum {
   OPCODE_R = 0b0000,
   OPCODE_J = 0b0010,
-  OPCODE_I1 = 0b0100, // addi
-  OPCODE_I2 = 0b1011, // lw
-  OPCODE_I3 = 0b1111, // sw
-  OPCODE_I4 = 0b1000  // beq  
+  OPCODE_ADDI = 0b0100, // addi
+  OPCODE_LW = 0b1011, // lw
+  OPCODE_SW = 0b1111, // sw
+  OPCODE_BEQ = 0b1000  // beq  
 } Opcode;
 
 typedef struct {
@@ -33,7 +33,7 @@ typedef enum {
   OP_LW = 0b011,
   OP_SW = 0b111,
   OP_BEQ = 0b110,
-  JUMP = 0b100
+  JUMP = 0b000
 } OperacaoUla;
 
 typedef enum {
@@ -76,6 +76,16 @@ typedef struct {
 typedef struct {
     int8_t resultado;
     uint8_t zero;
+    uint8_t overflow;
 } ResultadoUla;
+
+typedef struct No {
+    CPU estado;       
+    struct No *proximo;
+} No;
+
+typedef struct {
+    No *topo;
+} PilhaCPU;
 
 #endif

@@ -4,12 +4,17 @@
 #include "conversor.h"
 #include "controle.h"
 #include "ula.h"
-#include "banco_de_regs.h"
 #include "memoria.h"
+#include "utils.h"
+#include "debug.h"
 
+/*Funções auxiliares*/
 static void iniciar_cpu(CPU *cpu);
-static void executrar_ciclo(CPU *cpu);
-static uint16_t buscar_instrucao(const CPU *cpu);
+static void executrar_ciclo(CPU *cpu, int opcao_debug);
+static void executar_programa_completo(CPU *cpu);
+static void incrementar_pc(CPU *cpu, SinaisDeControle sinais_de_controle);
+static void resolver_desvio(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisDeControle sinais_de_controle, ResultadoUla resultadoUla);
+//static uint16_t buscar_instrucao(const CPU *cpu);
 static uint8_t mux_reg_destino(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada);
 static int8_t mux_fonte_ula(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada, const CPU *cpu);
 static int8_t mux_memoria_para_reg(
@@ -17,67 +22,95 @@ static int8_t mux_memoria_para_reg(
 	const InstrucaoDecodificada instrucao_decodificada,  
 	const CPU *cpu, const ResultadoUla resultadoUla);
 
+
 /* Funções de debug */
-static void debug(const InstrucaoDecodificada instrucao_decodificada, const SinaisDeControle sinais_de_controle, const ResultadoUla resultadoUla, const CPU *cpu);
 
-static void incrementar_pc(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisDeControle sinais_de_controle, ResultadoUla resultadoUla);
-
-void resetar_cpu(CPU *cpu) {}
-
-void avancar_cpu(CPU *cpu)
-{
-	executrar_ciclo(cpu);
+/* Ver implementação e qual o comportamento do reset. */
+void voltar_cpu(CPU *cpu, PilhaCPU *pilha) {
+	if (pop_cpu(pilha, cpu)) {
+        printf("mini-mips-info: Retornou para a instrução anterior.\n");
+    } else {
+        printf("mini-mips-warn: Não há estados anteriores para voltar!\n");
+    }
 }
 
-void executar_cpu(CPU *cpu) {}
+/* Executa um ciclo no simulador. */
+void avancar_cpu(CPU *cpu, PilhaCPU *pilha, int opcao_debug)
+{
+	push_cpu(pilha, cpu);
+	executrar_ciclo(cpu, opcao_debug);
+}
 
+/* Executa todo o programa */
+void executar_cpu(CPU *cpu) {
+	 // Salva o estado inicial da CPU na pilha
+	executar_programa_completo(cpu);
+}
+
+/* Inicializar colocando zerando os regs e memorias colocando em um estado inicial */
 void inicializar_cpu(CPU *cpu)
 {
 	iniciar_cpu(cpu);
 }
 
-static void executrar_ciclo(CPU *cpu)
+
+/* executa um ciclo no simulador
+* recebe a CPU que vai ser declarada no main e executa um ciclo completo, 
+* ou seja, busca a instrução, decodifica, gera os sinais de controle, e
+* executa a operação na ULA, acessa a memória 
+* e escreve de volta no banco de registradores.
+**/
+static void executrar_ciclo(CPU *cpu, int opcao_debug)
 {
 	uint16_t instrucao;
 	InstrucaoDecodificada instrucao_decodificada;
 	SinaisDeControle sinais_de_controle;
 
-	int8_t operador_a;		 // read register 1
-	int8_t operador_b;		 // read register 2 ou imediato
-	int8_t valor_write_back; // valor a ser escrito no banco de registradores
-	int8_t valor_lido_memoria; // valor lido da memória (para lw)
-	uint8_t registrador_destino;
-	ResultadoUla resultadoUla;
+	int8_t operador_a;		 // Read register 1
+	int8_t operador_b;		 // Read register 2 ou imediato
+	int8_t valor_write_back; // valor a ser escrito no banco de registradores (DMem ou ResultadoUla)
+	uint8_t registrador_destino_indice; // índice do registrador a ser escrito no banco de registradores, selecionado pelo mux RegDest
+	ResultadoUla resultadoUla; // Resultado das operações da ULA, incluindo o resultado e o sinal de zero (para branch)
 
-	// buscar instrucao
-	printf("PC valor: %u\n", cpu->pc);
-	instrucao = ler_memoria_instrucao(cpu, cpu->pc);
-	//
-	printf("instrucao: %u\n\n", instrucao);
-	// decodificar instrucao
+	// Buscar instrucao 
+	instrucao = ler_end_mem_instrucao(cpu, cpu->pc);
+	
+	// Decodificar instrucao 
 	instrucao_decodificada = decodificar_instrucao(instrucao);
 	sinais_de_controle = gerar_sinais_de_controle(instrucao_decodificada.opcode, instrucao_decodificada.funct);
 
-	registrador_destino = mux_reg_destino(sinais_de_controle, instrucao_decodificada);
+	// PC = PC + 1;
+    incrementar_pc(cpu, sinais_de_controle); 
 
+	// mux da arquitetura que vai selecionar o RegDest (indica o registrador a ser escrito no banco de regs)
+	// ele escolhe entre o campo rd ou rt da instrução decodificada, dependendo do tipo da instrução (R ou I).
+	registrador_destino_indice = mux_reg_destino(sinais_de_controle, instrucao_decodificada);
+
+	// valores que serão operados na ula: _a RS, _b RT ou imediato dependendo do tipo da instrução (R ou I)
 	operador_a = ler_registrador(cpu, instrucao_decodificada.rs);
 	operador_b = mux_fonte_ula(sinais_de_controle, instrucao_decodificada, cpu);
-
-	// execucao
+	
+	// Execucao 
 	resultadoUla = executar(operador_a, operador_b, sinais_de_controle.controle_ula);
 
-	// memoria
-	valor_lido_memoria = ler_memoria_dados(cpu, (uint8_t)(resultadoUla.resultado));
-	escrever_memoria_dados(cpu, resultadoUla.resultado, cpu->banco_de_regs[instrucao_decodificada.rt], sinais_de_controle);
-
+	// acesso a memoria 
+	escrever_end_mem_dados(cpu, resultadoUla.resultado, cpu->banco_de_regs[instrucao_decodificada.rt], sinais_de_controle);
 	valor_write_back = mux_memoria_para_reg(sinais_de_controle, instrucao_decodificada, cpu, resultadoUla);
 
-	// write back
-	escrever_registrador(cpu, registrador_destino, valor_write_back, sinais_de_controle);
+	// write back 
+	escrever_registrador(cpu, registrador_destino_indice, valor_write_back, sinais_de_controle);
 
-	debug(instrucao_decodificada, sinais_de_controle, resultadoUla, cpu);
-	incrementar_pc(cpu, instrucao_decodificada.imediato, instrucao_decodificada.endereco, sinais_de_controle, resultadoUla); // teste
-	printf("PC atualizado: %u\n", cpu->pc);
+	
+	resolver_desvio(cpu, instrucao_decodificada.imediato, instrucao_decodificada.endereco, sinais_de_controle, resultadoUla);
+	
+	debug_geral(instrucao_decodificada,instrucao, sinais_de_controle, resultadoUla, cpu, opcao_debug);
+	
+}
+
+static void executar_programa_completo(CPU *cpu) {
+	while (cpu->memoria_de_instrucao[cpu->pc] != 0) {
+		executrar_ciclo(cpu, 0);
+	}
 }
 
 static void iniciar_cpu(CPU *cpu)
@@ -99,60 +132,6 @@ static void iniciar_cpu(CPU *cpu)
 	{
 		cpu->banco_de_regs[posicao] = 0;
 	}
-}
-
-static void x() {}
-
-static void debug(const InstrucaoDecodificada instrucao_decodificada, const SinaisDeControle sinais_de_controle, const ResultadoUla resultadoUla, const CPU *cpu)
-{
-	printf("Tipo: %u\n", instrucao_decodificada.tipo);
-	printf("Opcode: %u\n", instrucao_decodificada.opcode);
-	printf("RS: %u\n", instrucao_decodificada.rs);
-	printf("RT: %u\n", instrucao_decodificada.rt);
-	printf("RD: %u\n", instrucao_decodificada.rd);
-	printf("Funct: %u\n", instrucao_decodificada.funct);
-	printf("Imediato: %d\n", instrucao_decodificada.imediato);
-	printf("Endereco: %u\n", instrucao_decodificada.endereco);
-
-	printf("------------------- Sinais de Controle Gerados: \n");
-	printf("\nControle ULA: ");
-	int8_para_binario(sinais_de_controle.controle_ula);
-	printf("\nEscrever Memoria:");
-	int8_para_binario(sinais_de_controle.escrever_memoria);
-	printf("\nEscrever Reg:");
-	int8_para_binario(sinais_de_controle.escrever_reg);
-	printf("\nMemoria para Reg:");
-	int8_para_binario(sinais_de_controle.memoria_para_reg);
-	printf("\nULA Fonte:");
-	int8_para_binario(sinais_de_controle.ula_fonte);
-	printf("\nReg Destino:");
-	int8_para_binario(sinais_de_controle.reg_destino);
-	printf("\nIncremento PC:");
-	int8_para_binario(sinais_de_controle.incremento_pc);
-	printf("\nJump:");
-	int8_para_binario(sinais_de_controle.jump);
-	printf("\nBranch:");
-	int8_para_binario(sinais_de_controle.branch);
-
-	printf("------------------- Resultado da Operação na Ula\n");
-	printf("Resultado: %d\n", resultadoUla.resultado);
-	printf("Zero: %u\n", resultadoUla.zero);
-	
-	printf("------------------- Banco de Registradores\n");
-	imprimir_registradores(cpu);
-	if (cpu->pc == 10 ) {
-
-
-	printf("------------------- Memória de Instruções\n");
-	imprimir_memoria_instrucao(cpu);
-	printf("------------------- Memória de Dados\n");
-	imprimir_memoria_dados(cpu);
-
-	}
-
-	printf("PC: %u\n", cpu->pc);
-
-	printf("Instrucao atual: %u\n", cpu->memoria_de_instrucao[cpu->pc]);
 }
 
 static uint8_t mux_reg_destino(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada)
@@ -178,24 +157,33 @@ static int8_t mux_memoria_para_reg(
 {
 	if (sinais_de_controle.memoria_para_reg == 0)
 	{
-		return ler_memoria_dados(cpu, resultadoUla.resultado);
+		return ler_end_mem_dados(cpu, (uint8_t)(resultadoUla.resultado));
 	}
 	return resultadoUla.resultado;
 }
 
-void incrementar_pc(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisDeControle sinais_de_controle, ResultadoUla resultadoUla) {
-	if (sinais_de_controle.incremento_pc == 1) {
-		printf("Incrementando PC. Valor atual: %u\n", cpu->pc);
-		printf("Imediato: %d, Endereco: %u\n", imediato, endereco);
+static void incrementar_pc(CPU *cpu, SinaisDeControle sinais_de_controle) {
 
-		cpu->pc += 1; // Incrementa o PC normalmente
-		if (sinais_de_controle.branch == 1 && resultadoUla.zero == 1) {
-			printf("Executando branch. PC atual: %u\n", cpu->pc);
-			cpu->pc += imediato; // Desvio para frente ou para trás dependendo do valor do imediato
-
-		} else if (sinais_de_controle.jump == 1) {
-			printf("Executando jump. PC atual: %u\n", cpu->pc);
-			cpu->pc = endereco; // Salto para o endereço especificado pelo imediato
-		} 
+	if (cpu->pc >= 256) {
+		return; // Evita incrementar o PC além do limite da memória de instruções
 	}
+
+	if (sinais_de_controle.incremento_pc == 1) {
+		//printf("Incrementando PC. Valor atual: %u\n", cpu->pc);
+		cpu->pc += 1; // Incrementa o PC para a próxima instrução
+	}
+}
+
+static void resolver_desvio(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisDeControle sinais_de_controle, ResultadoUla resultadoUla) {
+	if (sinais_de_controle.jump) {
+        cpu->pc = endereco;
+        return;
+    }
+
+	if (sinais_de_controle.branch) {
+        if (resultadoUla.zero) {
+            cpu->pc = cpu->pc + imediato; //zero = 1 
+        } 
+        return;
+    }
 }

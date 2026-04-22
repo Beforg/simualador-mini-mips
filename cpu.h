@@ -3,10 +3,10 @@
 
 #include "types.h"
 #include <stdint.h>
-
-        
-void resetar_cpu(CPU *cpu);
-void avancar_cpu(CPU *cpu);
+#include <stdbool.h>
+    
+void voltar_cpu(CPU *cpu, PilhaCPU *pilha);
+void avancar_cpu(CPU *cpu, PilhaCPU *pilha, int opcao_debug);
 void executar_cpu(CPU *cpu);
 void inicializar_cpu(CPU *cpu);
 

@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 #include "io.h"
+#include "utils.h"
 #include "conversor.h"
+#include "decodificador.h"
 
 /* Auxiliares de Leitura */
-static void verificar_erro_ao_abrir_arquivo(FILE *file);
+// static void verificar_erro_ao_abrir_arquivo(FILE *file);
 static void ler_arquivo_de_instrucoes(FILE *file, uint16_t *memoria_de_instrucoes);
 static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao);
-
+static void salvar_txt_logisim(FILE *file);
 /* Auxiliares menu */
 static void exibir_opcoes_do_menu();
 static int validar_opcao_escolhida(int opcao);
@@ -22,39 +25,99 @@ static int validar_opcao_escolhida(int opcao);
 void carregar_instrucoes(const char* nome_arquivo, uint16_t *memoria_de_instrucoes) {
 	FILE *file;
 	file = fopen(nome_arquivo, "r");
-	verificar_erro_ao_abrir_arquivo(file);
+
+    if(file == NULL){
+        puts("mini-mips-err: O arquivo não existe ou não é possível abrir!");
+        return;
+    }
+
+    printf("mini-mips-info: Arquivo aberto, iniciando leitura das instruções...\n");
 	ler_arquivo_de_instrucoes(file, memoria_de_instrucoes);
 	
 }
 
-static void verificar_erro_ao_abrir_arquivo(FILE *file) {
-	if (file == NULL) {
-		perror("Erro ao abrir o arquivo");
-        exit(1);	
-	}
-	printf("Arquivo aberto, iniciando leitura das instruções...\n");
-}
+// static void verificar_erro_ao_abrir_arquivo(FILE *file) {
+// 	if (file == NULL) {
+// 		perror("Erro ao abrir o arquivo");
+//         return;
+// 	}
+// 	printf("Arquivo aberto, iniciando leitura das instruções...\n");
+// }
 
 
 static void ler_arquivo_de_instrucoes(FILE *file, uint16_t *memoria_de_instrucoes) {
 	char linha[TAMANHO_LINHA];
     int posicao_atual_memoria_de_instrucoes = 0; // índice da memória
-
+    
     while (fgets(linha, sizeof(linha), file) != NULL && posicao_atual_memoria_de_instrucoes < MAX_INSTRUCOES) {
         
         linha[strcspn(linha, "\n")] = '\0';
         inserir_na_memoria_de_instrucoes(linha, memoria_de_instrucoes, &posicao_atual_memoria_de_instrucoes);
 	}
 
+    salvar_txt_logisim(file);
     fclose(file);
     printf("Carga finalizada. %d instrucoes carregadas.\n", posicao_atual_memoria_de_instrucoes);
-	printf("Instrucao atual: %u\n\n", memoria_de_instrucoes[0]);
+}
+
+static void salvar_txt_logisim(FILE *file) {
+    if (file == NULL) {
+        puts("mini-mips-err: Arquivo de entrada inválido para gerar logisim_output.txt.");
+        return;
+    }
+
+    char opcao_usuario = '\0';
+    int opcao_valida = 0;
+
+    while (!opcao_valida) {
+        printf("mini-mips: Deseja gerar o arquivo de memória para o Logisim? (s/n): ");
+        if (scanf(" %c", &opcao_usuario) != 1) {
+            puts("mini-mips-err: Não foi possível ler a opção do usuário.");
+            return;
+        }
+
+        if (opcao_usuario == 's' || opcao_usuario == 'S' || opcao_usuario == 'n' || opcao_usuario == 'N') {
+            opcao_valida = 1;
+        } else {
+            puts("mini-mips-err: Opção inválida. Digite 's' para sim ou 'n' para não.");
+        }
+    }
+
+    if (opcao_usuario == 'n' || opcao_usuario == 'N') {
+        puts("mini-mips-info: Geração do arquivo do Logisim cancelada pelo usuário.");
+        return;
+    }
+
+    
+
+    FILE *file_logisim = fopen("logisim_output.txt", "w");
+    char linha[TAMANHO_LINHA];
+    if (file_logisim == NULL) {
+        perror("Erro ao criar o arquivo de Logisim");
+        return;
+    }
+
+    // Reposiciona o ponteiro no início, pois o arquivo já foi lido para carregar memória.
+    rewind(file);
+
+    fprintf(file_logisim, "v2.0 raw\n");
+    while (fgets(linha, sizeof(linha), file) != NULL) {
+        linha[strcspn(linha, "\n")] = '\0';
+        if (strlen(linha) == 0) {
+            continue;
+        }
+        int valor = binario_para_int16_sem_sinal(linha);
+        fprintf(file_logisim, "%04X ", valor);
+    }
+
+    fclose(file_logisim);
+    puts("mini-mips-info: Arquivo logisim_output.txt gerado com sucesso.");
 }
 
 static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao) {
      if (strlen(linha) > 0) {
          memoria_de_instrucoes[*posicao] = binario_para_int16_sem_sinal(linha);
-         printf("Carregado na posicao [%d]: %s (%u)\n", *posicao, linha, memoria_de_instrucoes[*posicao]);
+         printf("Carregado na posicao [%d]: %s (0x%04X)\n", *posicao, linha, memoria_de_instrucoes[*posicao]);
          (*posicao)++;
      }
 }
@@ -97,3 +160,123 @@ static int validar_opcao_escolhida(int opcao) {
 	}
 	return opcao; // sucesso
 }
+
+void salvar_asm(const char *filename,const uint16_t *memoria_de_instrucao){
+    if (!filename || filename[0] == '\0'){
+        puts("mini-mips-err->salvar_asm(): O filename não foi especificado.");
+        return;
+    }
+
+    if (!memoria_de_instrucao) {
+        puts("mini-mips-err->salvar_asm(): Variável memória de instrução não especificada.");
+        return;
+    }
+
+    FILE *fp = fopen(filename, "w");
+
+    if (!fp) {
+        puts("mini-mips-err->salvar_asm(): Não foi possível abrir o arquivo de output.asm.");
+        return;
+    }
+
+    for (int i = 0; i < 256; i++) {
+        if (memoria_de_instrucao[i] == 0)
+            continue;
+
+		InstrucaoDecodificada instr = decodificar_instrucao(memoria_de_instrucao[i]);
+        char linha[128] = {0};
+        converter_para_asm(instr, linha);
+        fprintf(fp, "%s\n", linha);
+    }
+
+    fclose(fp);
+    printf("mini-mips: seu %s foi gerado!\n", filename);
+}
+
+void salvar_dat(const char *filename,const int8_t *memoria_de_dados){
+	// Verifica se o arquivo recebido e válido.
+	if(!filename || filename[0] == '\0'){
+		puts("mini-mips-err->salvar_dat(): O filename não foi especificado.");
+		return;
+	}
+
+	// Verifica se o ponteiro é válido para os dados.
+	if(!memoria_de_dados){
+		puts("mini-mips-err->salvar_dat(): Variável memória de dados não especificada.");
+		return;
+	}
+
+	// Tenta abrir o arquivo para escrita.
+	FILE *fp = fopen(filename,"w");
+
+	// Caso o arquivo não abra, retorna zero.
+	if(!fp){
+		puts("mini-mips-err->salvar_dat(): Não foi possível abrir o arquivo de output.dat");
+		return;
+	}
+
+	// Faz o dump da memória de dados, para o arquivo.
+	// Usando o macro PRId8 para printar o int8_t sem warning do compilador
+	for(int i = 0; i < 256; i++){
+		fprintf(fp,"%"PRId8"\n",memoria_de_dados[i]);
+	}
+
+	// Fecha o buffer após uso.
+	fclose(fp);
+
+	printf("mini-mips: seu %s foi gerado!\n",filename);
+	
+	return;
+}
+
+void carregar_dat(const char *filename, int8_t *memoria_de_dados) {
+    char line[16]; 
+    int linha = 0;
+
+    if (!filename || filename[0] == '\0') {
+        printf("mini-mips-err: Filename não especificado.\n");
+        return;
+    }
+
+    if (!memoria_de_dados) {
+        printf("mini-mips-err: Ponteiro de memória inválido.\n");
+        return;
+    }
+
+	if(arquivo_vazio(filename) == 1){
+		puts("mini-mips-err: O arquivo está vazio!");
+		return;
+	}
+	
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        puts("mini-mips-err: Erro ao abrir o arquivo.");
+        return;
+    }
+
+    while (linha < 256 && fscanf(fp, "%15s", line) == 1) {
+        char *endptr;
+        long val = strtol(line, &endptr, 10);
+
+        // Verifica se a conversão ocorreu
+        if (endptr == line) {
+            printf("mini-mips-err: Valor inválido na linha %d\n", linha + 1);
+            linha++; 
+            continue;
+        }
+
+        // Verifica o range de 8 bits
+        if (val < -128 || val > 127) {
+            printf("Erro: %ld fora do intervalo int8_t na linha %d.\n", val, linha + 1);
+        } else {
+            memoria_de_dados[linha] = (int8_t)val;
+        }
+
+        linha++;
+    }
+
+	puts("mini-mips-info: Memória de dados carregada com sucesso!");
+	// Fecha o arquivo
+    fclose(fp);
+}
+

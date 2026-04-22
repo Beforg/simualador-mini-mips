@@ -1,9 +1,10 @@
 
 #include "types.h"
-#include <stdint.h>
 #include "decodificador.h"
 #include "utils.h"
+#include "estatisticas.h"
 #include <stdio.h>
+#include <stdint.h>
 
 static uint8_t obter_opcode(uint16_t instr);
 static uint8_t extrair_rs(uint16_t instr);
@@ -65,14 +66,26 @@ static void decodificar(InstrucaoDecodificada *instr_decodificada, TipoInstrucao
 
 static TipoInstrucao determinar_tipo_instrucao(uint8_t opcode)
 {
-    if (opcode == OPCODE_R)
+    
+    if (opcode == OPCODE_R){
+        dados.total_instrucoes++;
+        dados.total_tipo_r++;
         return TIPO_R;
-
-    else if (opcode == OPCODE_J)
+    }
+        
+    else if (opcode == OPCODE_J){
+        dados.total_instrucoes++;
+        dados.total_tipo_j++;
         return TIPO_J;
+    }
+        
 
-    else if (opcode == OPCODE_I1 || opcode == OPCODE_I2 || opcode == OPCODE_I3 || opcode == OPCODE_I4)
+    else if (opcode == OPCODE_ADDI || opcode == OPCODE_LW || opcode == OPCODE_SW || opcode == OPCODE_BEQ){
+        dados.total_instrucoes++;
+        dados.total_tipo_i++;
         return TIPO_I;
+    }
+        
 
     else
         return TIPO_INVALIDO;
