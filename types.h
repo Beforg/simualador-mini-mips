@@ -11,6 +11,21 @@ typedef enum {
 } TipoInstrucao;
 
 typedef enum {
+  IF = 0,
+  ID = 1,
+  EX_MEM_IMM = 2,
+  LW_ACESSO_MEM = 3,
+  MEM_WB = 4,
+  SW_ACESSO_MEM = 5,
+  END_ADDI = 6;
+  EX_TIPO_R = 7;
+  END_TIPO_R = 8;
+  EX_BRANCH = 9;
+  EX_JUMP = 10;
+
+} EstadosControle;
+
+typedef enum {
   OPCODE_R = 0b0000,
   OPCODE_J = 0b0010,
   OPCODE_ADDI = 0b0100, // addi
@@ -45,8 +60,13 @@ typedef enum {
 
 typedef struct {
  uint16_t pc;
- uint16_t memoria_de_instrucao[256];
- int8_t memoria_de_dados[256];
+ uint16_t ri;
+ uint16_t rdm;
+ int8_t a;
+ int8_t b;
+ int8_t saida_ula;
+ uint16_t memoria[256];
+ //int8_t memoria_de_dados[256];
  int8_t banco_de_regs[8];
 } CPU;
 
@@ -66,9 +86,13 @@ typedef struct {
   uint8_t escrever_memoria;
   uint8_t escrever_reg;
   uint8_t memoria_para_reg;
-  uint8_t ula_fonte;
+  uint8_t ula_fonte_a;
+  uint8_t ula_fonte_b;
   uint8_t reg_destino;
   uint8_t incremento_pc;
+  uint8_t pc_fonte;
+  uint8_t ir_escrever;
+  uint8_t i_ou_d;
   uint8_t jump;
   uint8_t branch;
 } SinaisDeControle;
