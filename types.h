@@ -17,11 +17,11 @@ typedef enum {
   LW_ACESSO_MEM = 3,
   MEM_WB = 4,
   SW_ACESSO_MEM = 5,
-  END_ADDI = 6;
-  EX_TIPO_R = 7;
-  END_TIPO_R = 8;
-  EX_BRANCH = 9;
-  EX_JUMP = 10;
+  END_ADDI = 6,
+  EX_TIPO_R = 7,
+  END_TIPO_R = 8,
+  EX_BRANCH = 9,
+  EX_JUMP = 10,
 
 } EstadosControle;
 
@@ -67,6 +67,7 @@ typedef struct {
  int8_t saida_ula;
  uint16_t memoria[256];
  //int8_t memoria_de_dados[256];
+ EstadosControle estado_atual;
  int8_t banco_de_regs[8];
 } CPU;
 

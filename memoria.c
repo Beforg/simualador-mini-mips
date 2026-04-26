@@ -6,27 +6,17 @@
 #pragma region MEMORIA_DE_DADOS
 
 
-int8_t ler_end_mem_dados(const CPU *p,uint16_t addr){
-    return p->memoria_de_dados[addr];
-}                
-void escrever_end_mem_dados(CPU *p,uint8_t addr,int8_t valor, SinaisDeControle sinais_de_controle){
-    if (sinais_de_controle.escrever_memoria == 0) return;
-    p->memoria_de_dados[addr] = (uint8_t) valor;
-    printf("mini-mips: A memória [%u] tem um novo valor: %d\n",addr,valor);
-} 
 
-#pragma endregion MEMORIA_DE_DADOS
-
-#pragma region MEMORIA_DE_INSTRUCAO
+#pragma region MEMORIA
 
 uint16_t ler_end_mem_instrucao(const CPU *p,uint16_t addr){
-    return p->memoria_de_instrucao[addr];
+    return p->memoria[addr];
 }
 void escrever_end_mem_instrucao(CPU *p,uint16_t addr,uint16_t valor){ // Não sei se terá uso.
-    p->memoria_de_instrucao[addr] = valor;
+    p->memoria[addr] = valor;
 }
 
-#pragma endregion MEMORIA_DE_INSTRUCAO
+#pragma endregion MEMORIA
 
 #pragma region REGISTRADOR
 
@@ -63,24 +53,13 @@ int8_t ler_registrador(const CPU *p, uint8_t id){
 // A memória pode ser DADOS,INSTRUCAO ou REGISTRADOR
 
 void imprimirMemoria(const CPU *p, TipoMemoria tipo, OpcaoBase base) {
-    if (tipo == DADOS) {
-        puts("\n=================== MEMÓRIA DE DADOS ===================");
-        for (int i = 0; i < 256; i++) {
-            printf("%3d: ", i);
-            if (base == HEXADECIMAL) int8_hexa(p->memoria_de_dados[i]);
-            else if (base == BINARIO) int8_para_binario(p->memoria_de_dados[i]);
-            else printf("%d", p->memoria_de_dados[i]);
-            printf(i % 4 == 3 ? "\n" : " | "); // Organiza em colunas como no Logisim
-        }
-        puts("\n=========================================================");
-    } 
-    else if (tipo == INSTRUCAO) {
+     if (tipo == INSTRUCAO) {
         puts("\n=================== MEMÓRIA DE PROGRAMA ===================");
         for (int i = 0; i < 256; i++) {
             printf("%3d: ", i);
-            if (base == HEXADECIMAL) int16_hexa(p->memoria_de_instrucao[i]);
-            else if (base == BINARIO) int16_para_binario(p->memoria_de_instrucao[i]);
-            else printf("%d", p->memoria_de_instrucao[i]);
+            if (base == HEXADECIMAL) int16_hexa(p->memoria[i]);
+            else if (base == BINARIO) int16_para_binario(p->memoria[i]);
+            else printf("%d", p->memoria[i]);
             printf(i % 4 == 3 ? "\n" : " | ");
         }
         puts("\n=========================================================");
@@ -104,13 +83,13 @@ void imprimirMemoria(const CPU *p, TipoMemoria tipo, OpcaoBase base) {
 void resetarMemoria(CPU *p, TipoMemoria tipo){
      if(tipo == DADOS){
         for(int i = 0; i < 256;i++){
-            p->memoria_de_dados[i] = 0;
+            p->memoria[i] = 0;
         }
         return;
     }
     else if(tipo == INSTRUCAO){
         for(int i = 0; i < 256;i++){
-            p->memoria_de_instrucao[i] = 0;
+            p->memoria[i] = 0;
         }
         return;
     }

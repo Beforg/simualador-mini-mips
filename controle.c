@@ -12,18 +12,30 @@ static void gerar_sinais_beq(SinaisDeControle *sinais_de_controle);
 static void gerar_sinais_jump(SinaisDeControle *sinais_de_controle);
 static void gerar_sinais_default_r(SinaisDeControle *sinais_de_controle);
 static void gerar_sinais_default_i(SinaisDeControle *sinais_de_controle);
-static void gerar(SinaisDeControle *sinais_de_controle, uint8_t opcode, uint8_t funct, CPU *cpu);
+static void gerar(SinaisDeControle *sinais_de_controle, uint8_t funct, CPU *cpu);
+
+static void gerar_sinais_estado_if(SinaisDeControle *sinais_de_controle);
+static void gerar_sinais_estado_id(SinaisDeControle *sinais_de_controle);
+static void gerar_sinais_estado_ex_mem_imm(SinaisDeControle *sinais_de_controle);
+static void gerar_sinais_estado_lw_acesso_mem(SinaisDeControle *sinais_de_controle);
+static void gerar_sinais_estado_mem_wb(SinaisDeControle *sinais_de_controle);
+static void gerar_sinais_estado_sw_acesso_mem(SinaisDeControle *sinais_de_controle);
+static void gerar_sinais_estado_end_addi(SinaisDeControle *sinais_de_controle);
+static void gerar_sinais_estado_ex_tipo_r(SinaisDeControle *sinais_de_controle, uint8_t funct);
+static void gerar_sinais_estado_end_tipo_r(SinaisDeControle *sinais_de_controle);
+static void gerar_sinais_estado_ex_branch(SinaisDeControle *sinais_de_controle);
+static void gerar_sinais_estado_ex_jump(SinaisDeControle *sinais_de_controle);
 
 SinaisDeControle gerar_sinais_de_controle(uint8_t opcode, uint8_t funct, CPU *cpu) {
     SinaisDeControle sinais_de_controle = {0}; // Zera tudo
-    gerar(&sinais_de_controle, opcode, funct);
+    gerar(&sinais_de_controle, funct, cpu);
     return sinais_de_controle;
 }
 
 EstadosControle proximo_estado(EstadosControle estado_atual, uint8_t opcode) {
   if(estado_atual == IF) return ID;
   if (estado_atual == ID) {
-    switch (OPCODE) {
+    switch (opcode) {
         case OPCODE_LW:
         case OPCODE_SW:
         case OPCODE_ADDI:
@@ -37,8 +49,9 @@ EstadosControle proximo_estado(EstadosControle estado_atual, uint8_t opcode) {
         default:
             return IF; // Para instruções inválidas, volta para IF
     }
+  }
   if (estado_atual == EX_MEM_IMM) {
-    switch (OPCODE) {
+    switch (opcode) {
         case OPCODE_LW:
             return LW_ACESSO_MEM;
         case OPCODE_SW:
@@ -57,47 +70,248 @@ EstadosControle proximo_estado(EstadosControle estado_atual, uint8_t opcode) {
   
 }
 
-static void gerar(SinaisDeControle *sinais_de_controle, uint8_t opcode, uint8_t funct, CPU *cpu) {
-    switch (opcode) {
-        case OPCODE_R:  
-            switch (funct) {
-                case FUNCT_ADD: // add
-                    gerar_sinais_add(sinais_de_controle);
-                    break;
-                case FUNCT_SUB: // sub
-                    gerar_sinais_sub(sinais_de_controle);
-                    break;
-                case FUNCT_AND: // and
-                    gerar_sinais_and(sinais_de_controle);
-                    break;
-                case FUNCT_OR: // or
-                    gerar_sinais_or(sinais_de_controle);
-                    break;
-                default: // funct invalido (nop)
-                    *sinais_de_controle = (SinaisDeControle){0};
-                    break;
-            }
+static void gerar(SinaisDeControle *sinais_de_controle, uint8_t funct, CPU *cpu) {
+    switch (cpu->estado_atual) {
+        case IF:
+            gerar_sinais_estado_if(sinais_de_controle);
             break;
-        case OPCODE_ADDI: // addi
-            gerar_sinais_addi(sinais_de_controle);
+        case ID:
+            gerar_sinais_estado_id(sinais_de_controle);
             break;
-        case OPCODE_LW: // lw
-            gerar_sinais_lw(sinais_de_controle);
+        case EX_MEM_IMM:
+            gerar_sinais_estado_ex_mem_imm(sinais_de_controle);
             break;
-        case OPCODE_SW: // sw
-            gerar_sinais_sw(sinais_de_controle);
+        case LW_ACESSO_MEM:
+            gerar_sinais_estado_lw_acesso_mem(sinais_de_controle);
             break;
-        case OPCODE_BEQ: // beq
-            gerar_sinais_beq(sinais_de_controle);
+        case MEM_WB:
+            gerar_sinais_estado_mem_wb(sinais_de_controle);
             break;
-        case OPCODE_J: // jump
-            gerar_sinais_jump(sinais_de_controle);
+        case SW_ACESSO_MEM:
+            gerar_sinais_estado_sw_acesso_mem(sinais_de_controle);
             break;
-        default: // opcode invalido (nop)
+        case END_ADDI:
+            gerar_sinais_estado_end_addi(sinais_de_controle);
+            break;
+        case EX_TIPO_R:
+            gerar_sinais_estado_ex_tipo_r(sinais_de_controle, funct);
+            break;
+        case END_TIPO_R:
+            gerar_sinais_estado_end_tipo_r(sinais_de_controle);
+            break;
+        case EX_BRANCH:
+            gerar_sinais_estado_ex_branch(sinais_de_controle);
+            break;
+        case EX_JUMP:
+            gerar_sinais_estado_ex_jump(sinais_de_controle);
+            break;
+        default:
+            // Para estados desconhecidos, zera os sinais de controle
             *sinais_de_controle = (SinaisDeControle){0};
-            break;
     }
 }
+
+
+
+static void gerar_sinais_estado_if(SinaisDeControle *sinais_de_controle) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = 0, // Não importa para IF
+        .escrever_memoria = 0,
+        .escrever_reg = 0,
+        .memoria_para_reg = 0,
+        .ula_fonte_a = 0,
+        .ula_fonte_b = 1,
+        .reg_destino = 1,
+        .incremento_pc = 1, // Incrementa o PC para buscar a próxima instrução
+        .pc_fonte = 0, // O próximo PC vem do incremento normal
+        .ir_escrever = 1, // Escreve a instrução lida no RI
+        .i_ou_d = 0, // Não importa para IF
+        .jump = 0, // Não é uma instrução de salto
+        .branch = 0 // Não é uma instrução de desvio
+    };
+}
+
+static void gerar_sinais_estado_id(SinaisDeControle *sinais_de_controle) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = OP_ADD, // Calcula PC + imediato
+        .escrever_memoria = 0,
+        .escrever_reg = 0,
+        .memoria_para_reg = 0,
+        .ula_fonte_a = 0,
+        .ula_fonte_b = 2,
+        .reg_destino = 1,
+        .incremento_pc = 0,
+        .pc_fonte = 0,
+        .ir_escrever = 0,
+        .i_ou_d = 0,
+        .jump = 0,
+        .branch = 0
+    };
+}
+
+static void gerar_sinais_estado_ex_mem_imm(SinaisDeControle *sinais_de_controle) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = OP_ADD, // Calcula endereço base + imediato
+        .escrever_memoria = 0,
+        .escrever_reg = 0,
+        .memoria_para_reg = 0,
+        .ula_fonte_a = 1,
+        .ula_fonte_b = 2,
+        .reg_destino = 0,
+        .incremento_pc = 0,
+        .pc_fonte = 0,
+        .ir_escrever = 0,
+        .i_ou_d = 0,
+        .jump = 0,
+        .branch = 0
+    };
+}
+
+static void gerar_sinais_estado_lw_acesso_mem(SinaisDeControle *sinais_de_controle) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = 0,
+        .escrever_memoria = 0,
+        .escrever_reg = 0,
+        .memoria_para_reg = 0,
+        .ula_fonte_a = 1,
+        .ula_fonte_b = 2,
+        .reg_destino = 0,
+        .incremento_pc = 0,
+        .pc_fonte = 0,
+        .ir_escrever = 0,
+        .i_ou_d = 1,
+        .jump = 0,
+        .branch = 0
+    };
+}
+
+static void gerar_sinais_estado_mem_wb(SinaisDeControle *sinais_de_controle) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = 0,
+        .escrever_memoria = 0,
+        .escrever_reg = 1,
+        .memoria_para_reg = 1,
+        .ula_fonte_a = 0,
+        .ula_fonte_b = 0,
+        .reg_destino = 0,
+        .incremento_pc = 0,
+        .pc_fonte = 0,
+        .ir_escrever = 0,
+        .i_ou_d = 0,
+        .jump = 0,
+        .branch = 0
+    };
+}
+
+static void gerar_sinais_estado_sw_acesso_mem(SinaisDeControle *sinais_de_controle) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = 0,
+        .escrever_memoria = 1,
+        .escrever_reg = 0,
+        .memoria_para_reg = 0,
+        .ula_fonte_a = 0,
+        .ula_fonte_b = 0,
+        .reg_destino = 0,
+        .incremento_pc = 0,
+        .pc_fonte = 0,
+        .ir_escrever = 0,
+        .i_ou_d = 1,
+        .jump = 0,
+        .branch = 0
+    };
+}
+
+static void gerar_sinais_estado_end_addi(SinaisDeControle *sinais_de_controle) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = 0,
+        .escrever_memoria = 0,
+        .escrever_reg = 1,
+        .memoria_para_reg = 0,
+        .ula_fonte_a = 1,
+        .ula_fonte_b = 0,
+        .reg_destino = 0,
+        .incremento_pc = 0,
+        .pc_fonte = 0,
+        .ir_escrever = 0,
+        .i_ou_d = 0,
+        .jump = 0,
+        .branch = 0
+    };
+}
+
+static void gerar_sinais_estado_ex_tipo_r(SinaisDeControle *sinais_de_controle, uint8_t funct) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = funct,
+        .escrever_memoria = 0,
+        .escrever_reg = 0,
+        .memoria_para_reg = 0,
+        .ula_fonte_a = 1,
+        .ula_fonte_b = 0,
+        .reg_destino = 1,
+        .incremento_pc = 0,
+        .pc_fonte = 0,
+        .ir_escrever = 0,
+        .i_ou_d = 0,
+        .jump = 0,
+        .branch = 0
+    };
+}
+
+static void gerar_sinais_estado_end_tipo_r(SinaisDeControle *sinais_de_controle) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = 0,
+        .escrever_memoria = 0,
+        .escrever_reg = 1,
+        .memoria_para_reg = 0,
+        .ula_fonte_a = 0,
+        .ula_fonte_b = 0,
+        .reg_destino = 1,
+        .incremento_pc = 0,
+        .pc_fonte = 0,
+        .ir_escrever = 0,
+        .i_ou_d = 0,
+        .jump = 0,
+        .branch = 0
+    };
+}
+
+static void gerar_sinais_estado_ex_branch(SinaisDeControle *sinais_de_controle) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = 0b010,
+        .escrever_memoria = 0,
+        .escrever_reg = 0,
+        .memoria_para_reg = 0,
+        .ula_fonte_a = 1,
+        .ula_fonte_b = 0,
+        .reg_destino = 0,
+        .incremento_pc = 0,
+        .pc_fonte = 1,
+        .ir_escrever = 0,
+        .i_ou_d = 0,
+        .jump = 0,
+        .branch = 1
+    };
+}
+
+static void gerar_sinais_estado_ex_jump(SinaisDeControle *sinais_de_controle) {
+    *sinais_de_controle = (SinaisDeControle){
+        .controle_ula = 0,
+        .escrever_memoria = 0,
+        .escrever_reg = 0,
+        .memoria_para_reg = 0,
+        .ula_fonte_a = 0,
+        .ula_fonte_b = 0,
+        .reg_destino = 0,
+        .incremento_pc = 0,
+        .pc_fonte = 2,
+        .ir_escrever = 0,
+        .i_ou_d = 0,
+        .jump = 1,
+        .branch = 0
+    };
+}
+// ANTIGAS //
+
 
 static void gerar_sinais_add(SinaisDeControle *sinais_de_controle) {
     sinais_de_controle->controle_ula = OP_ADD; // Operação de adição
@@ -121,7 +335,7 @@ static void gerar_sinais_or(SinaisDeControle *sinais_de_controle) {
 
 static void gerar_sinais_addi(SinaisDeControle *sinais_de_controle) {
     sinais_de_controle->controle_ula = OP_ADDI;
-    sinais_de_controle->ula_fonte = 1;
+    sinais_de_controle->ula_fonte_a = 1;
     sinais_de_controle->memoria_para_reg = 1;
     sinais_de_controle->escrever_reg = 1;
     sinais_de_controle->escrever_memoria = 0;
@@ -131,7 +345,7 @@ static void gerar_sinais_addi(SinaisDeControle *sinais_de_controle) {
 
 static void gerar_sinais_lw(SinaisDeControle *sinais_de_controle) {
     sinais_de_controle->controle_ula = OP_LW;
-    sinais_de_controle->ula_fonte = 1;
+    sinais_de_controle->ula_fonte_a = 1;
     sinais_de_controle->memoria_para_reg = 0;
     sinais_de_controle->escrever_reg = 1;
     sinais_de_controle->escrever_memoria = 0;
@@ -141,7 +355,7 @@ static void gerar_sinais_lw(SinaisDeControle *sinais_de_controle) {
 
 static void gerar_sinais_sw(SinaisDeControle *sinais_de_controle) {
     sinais_de_controle->controle_ula = OP_SW;
-    sinais_de_controle->ula_fonte = 1;
+    sinais_de_controle->ula_fonte_a = 1;
     sinais_de_controle->memoria_para_reg = 0; // Não importa para sw
     sinais_de_controle->escrever_reg = 0;
     sinais_de_controle->escrever_memoria = 1;
@@ -151,7 +365,7 @@ static void gerar_sinais_sw(SinaisDeControle *sinais_de_controle) {
 
 static void gerar_sinais_beq(SinaisDeControle *sinais_de_controle) {
     sinais_de_controle->controle_ula = OP_BEQ; // Operação de comparação (subtração)
-    sinais_de_controle->ula_fonte = 0;
+    sinais_de_controle->ula_fonte_a = 0;
     sinais_de_controle->memoria_para_reg = 0;
     sinais_de_controle->escrever_reg = 0;
     sinais_de_controle->escrever_memoria = 0;
@@ -162,7 +376,7 @@ static void gerar_sinais_beq(SinaisDeControle *sinais_de_controle) {
 static void gerar_sinais_default_r(SinaisDeControle *sinais_de_controle) {
     sinais_de_controle->incremento_pc = 1; // Incrementa o PC normalmente
     sinais_de_controle->reg_destino = 1; // O registrador de destino é rd
-    sinais_de_controle->ula_fonte = 0; // O segundo operando vem do registrador rt
+    sinais_de_controle->ula_fonte_a = 0; // O segundo operando vem do registrador rt
     sinais_de_controle->memoria_para_reg = 1; // CUIDADO: Na arquitetura, 1 vai da ula(resultado) para reg.
     sinais_de_controle->escrever_reg = 1; // Escreve no registrador de destino
     sinais_de_controle->escrever_memoria = 0; // Não escreve na memória
@@ -180,7 +394,7 @@ static void gerar_sinais_jump(SinaisDeControle *sinais_de_controle) {
     sinais_de_controle->controle_ula = JUMP; // Não importa para jump
     sinais_de_controle->incremento_pc = 1; // O PC é atualizado com o endereço de salto, não incrementado normalmente
     sinais_de_controle->reg_destino = 0; // Não importa para jump
-    sinais_de_controle->ula_fonte = 0; // O segundo operando vem do registrador rt
+    sinais_de_controle->ula_fonte_a = 0; // O segundo operando vem do registrador rt
     sinais_de_controle->memoria_para_reg = 0; // Não importa para jump
     sinais_de_controle->escrever_reg = 0;
     sinais_de_controle->escrever_memoria = 0;

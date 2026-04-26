@@ -23,6 +23,19 @@ static int8_t mux_memoria_para_reg(
 	const CPU *cpu, const ResultadoUla resultadoUla);
 
 
+static void estado_if(CPU *cpu);
+static void estado_id(CPU *cpu);
+static void estado_ex_mem_imm(CPU *cpu);
+static void estado_mem_read(CPU *cpu);
+static void estado_wb_lw(CPU *cpu);
+static void estado_mem_write(CPU *cpu);
+static void estado_wb_addi(CPU *cpu);
+static void estado_ex_r(CPU *cpu);
+static void estado_wb_r(CPU *cpu);
+static void estado_ex_beq(CPU *cpu);
+static void estado_ex_j(CPU *cpu);
+static void escrever_ri(CPU *cpu, uint16_t instrucao, SinaisDeControle sinais_de_controle);
+
 /* Funções de debug */
 
 /* Ver implementação e qual o comportamento do reset. */
@@ -72,12 +85,16 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	uint8_t registrador_destino_indice; // índice do registrador a ser escrito no banco de registradores, selecionado pelo mux RegDest
 	ResultadoUla resultadoUla; // Resultado das operações da ULA, incluindo o resultado e o sinal de zero (para branch)
 
-	// Buscar instrucao 
+
+	//Buscar instrucao 
 	instrucao = ler_end_mem_instrucao(cpu, cpu->pc);
-	
+	instrucao_decodificada = decodificar_instrucao(cpu->ri);
+	sinais_de_controle = gerar_sinais_de_controle(instrucao_decodificada.opcode, instrucao_decodificada.funct, cpu);
+
+	escrever_ri(cpu, instrucao, sinais_de_controle);
 	// Decodificar instrucao 
-	instrucao_decodificada = decodificar_instrucao(instrucao);
-	sinais_de_controle = gerar_sinais_de_controle(instrucao_decodificada.opcode, instrucao_decodificada.funct);
+	
+	
 
 	// PC = PC + 1;
     incrementar_pc(cpu, sinais_de_controle); 
@@ -108,7 +125,7 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 }
 
 static void executar_programa_completo(CPU *cpu) {
-	while (cpu->memoria_de_instrucao[cpu->pc] != 0) {
+	while (cpu->memoria[cpu->pc] != 0) {
 		executrar_ciclo(cpu, 0);
 	}
 }
@@ -117,21 +134,32 @@ static void iniciar_cpu(CPU *cpu)
 {
 	int posicao;
 	cpu->pc = 0;
+	cpu->estado_atual = IF;
 
 	for (posicao = 0; posicao < 256; posicao++)
 	{
-		cpu->memoria_de_instrucao[posicao] = 0;
+		cpu->memoria[posicao] = 0;
 	}
 
 	for (posicao = 0; posicao < 256; posicao++)
 	{
-		cpu->memoria_de_dados[posicao] = 0;
+		cpu->memoria[posicao] = 0;
 	}
 
 	for (posicao = 0; posicao < 8; posicao++)
 	{
 		cpu->banco_de_regs[posicao] = 0;
 	}
+}
+
+static void escrever_ri(CPU *cpu, uint16_t instrucao, SinaisDeControle sinais_de_controle) {
+	if (sinais_de_controle.ir_escrever) {
+		cpu->ri = instrucao;
+	}
+}
+
+static void escrever_rdm(CPU *cpu, uint16_t dado) {
+	cpu->rdm = dado;
 }
 
 static uint8_t mux_reg_destino(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada)
@@ -144,7 +172,7 @@ static uint8_t mux_reg_destino(const SinaisDeControle sinais_de_controle, const 
 }
 static int8_t mux_fonte_ula(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada, const CPU *cpu)
 {
-	if (sinais_de_controle.ula_fonte == 1)
+	if (sinais_de_controle.ula_fonte_a == 1)
 	{
 		return instrucao_decodificada.imediato;
 	}
@@ -173,6 +201,42 @@ static void incrementar_pc(CPU *cpu, SinaisDeControle sinais_de_controle) {
 		cpu->pc += 1; // Incrementa o PC para a próxima instrução
 	}
 }
+
+
+static void estado_if(CPU *cpu) {
+
+}
+static void estado_id(CPU *cpu) {
+
+}
+static void estado_ex_mem_imm(CPU *cpu) {
+
+}
+static void estado_mem_read(CPU *cpu) {
+
+}
+static void estado_wb_lw(CPU *cpu) {
+
+}
+static void estado_mem_write(CPU *cpu) {
+
+}
+static void estado_wb_addi(CPU *cpu) {
+
+}
+static void estado_ex_r(CPU *cpu) {
+
+}
+static void estado_wb_r(CPU *cpu) {
+
+}
+static void estado_ex_beq(CPU *cpu) {
+
+}
+static void estado_ex_j(CPU *cpu) {
+	
+}
+
 
 static void resolver_desvio(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisDeControle sinais_de_controle, ResultadoUla resultadoUla) {
 	if (sinais_de_controle.jump) {

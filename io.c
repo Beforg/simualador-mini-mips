@@ -22,7 +22,7 @@ static int validar_opcao_escolhida(int opcao);
  * @params: Nome do arquivo e Memória de Instruções da struct CPU.
  *
  * */
-void carregar_instrucoes_e_dados(const char *nome_arquivo, CPU *cpu) {
+void carregar_instrucoes_e_dados_e_instrucoes(const char *nome_arquivo, CPU *cpu) {
 	FILE *file;
 	file = fopen(nome_arquivo, "r");
 
@@ -46,7 +46,7 @@ void carregar_instrucoes_e_dados(const char *nome_arquivo, CPU *cpu) {
 
 
 static void processar_dados_e_instrucoes(FILE *file, CPU *cpu) {
-	 char linha[64];
+	char linha[64];
     int modo = MODO_INSTRUCAO;
     int endereco_atual = 0;
     int addr_dados_sequencial = 128; 
@@ -66,7 +66,7 @@ static void processar_dados_e_instrucoes(FILE *file, CPU *cpu) {
 
         if (modo == MODO_INSTRUCAO) {
             if (endereco_atual <= 127) {
-                cpu->memoria_de_instrucao[endereco_atual] = binario_para_int16_sem_sinal(linha);
+                cpu->memoria[endereco_atual] = binario_para_int16_sem_sinal(linha);
                 endereco_atual++;
             } else {
                 puts("mini-mips-warn: Limite de instruções (127) atingido. Verifique o ficheiro .mem");
@@ -79,7 +79,7 @@ static void processar_dados_e_instrucoes(FILE *file, CPU *cpu) {
             // Tenta formato "endereco:binario"
             if (sscanf(linha, "%d:%s", &addr_lido, bin_lido) == 2) {
                 if (addr_lido >= 128 && addr_lido <= 255) {
-                    cpu->memoria_de_dados[addr_lido] = (int8_t)binario_para_int16_sem_sinal(bin_lido);
+                    cpu->memoria[addr_lido] = (int8_t)binario_para_int16_sem_sinal(bin_lido);
                     printf("    [Data] End: %d carregado.\n", addr_lido);
                 } else {
                     printf("mini-mips-err: Endereço de dado %d fora da faixa permitida [128-255].\n", addr_lido);
@@ -88,7 +88,7 @@ static void processar_dados_e_instrucoes(FILE *file, CPU *cpu) {
             else {
                 // Formato sequencial (apenas o binário)
                 if (addr_dados_sequencial <= 255) {
-                    cpu->memoria_de_dados[addr_dados_sequencial] = (int8_t)binario_para_int16_sem_sinal(linha);
+                    cpu->memoria[addr_dados_sequencial] = (int8_t)binario_para_int16_sem_sinal(linha);
                     addr_dados_sequencial++;
                 } else {
                     puts("mini-mips-err: Memória de dados cheia (255).");
@@ -96,6 +96,8 @@ static void processar_dados_e_instrucoes(FILE *file, CPU *cpu) {
             }
         }
     }
+    salvar_txt_logisim(file);
+    fclose(file);
 }
 
 static void salvar_txt_logisim(FILE *file) {
