@@ -102,7 +102,7 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	
 	
 	cpu->pc = mux_pc_fonte(sinais_de_controle, cpu, resultadoUla, instrucao_decodificada.endereco);
-	cpu->saida_ula = resultadoUla.resultado;
+	
 	// acesso a memoria 
 	escrever_end_mem(cpu, endereco, cpu->b, sinais_de_controle);
 	valor_write_back = mux_memoria_para_reg(sinais_de_controle, instrucao_decodificada, cpu);
@@ -112,13 +112,27 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 
 	//resolver_desvio(cpu, instrucao_decodificada.imediato, instrucao_decodificada.endereco, sinais_de_controle, resultadoUla);
 	debug_geral(instrucao_decodificada,instrucao, sinais_de_controle, resultadoUla, cpu, opcao_debug);
+	cpu->saida_ula = resultadoUla.resultado;
 	cpu->estado_atual = proximo_estado(cpu->estado_atual, instrucao_decodificada.opcode);
 	
 }
 
 static void executar_programa_completo(CPU *cpu) {
-	for (int i = 0; i < 128; i++) {
+	const int max_ciclos = 4096;
+	const uint16_t limite_instr = 128;
+	int ciclos = 0;
+
+	while (ciclos < max_ciclos && cpu->memoria) {
 		executrar_ciclo(cpu, 0);
+		ciclos++;
+
+		if (cpu->pc >= limite_instr && cpu->estado_atual == IF) {
+			break;
+		}
+	}
+
+	if (ciclos >= max_ciclos) {
+		printf("mini-mips-warn: limite de ciclos atingido; possivel loop infinito.\n");
 	}
 }
 

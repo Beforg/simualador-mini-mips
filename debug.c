@@ -81,30 +81,30 @@ void estado_atual_cpu(const CPU *cpu, int opcao)
     // Seção do PC e Instrução
     if (opcao == 1)
     {
-        printf("\n║  PC: %u (0x%02X)  │  Instrução: ", cpu->pc, cpu->pc);
+        printf("\n║  PC: %u (0x%02X)  │  Instrução (RI): ", cpu->pc, cpu->pc);
     }
     else if (opcao == 2)
     {
         printf("\n║  PC: %u (", cpu->pc);
         int8_para_binario(cpu->pc);
-        printf(")  │  Instrução: ");
+        printf(")  │  Instrução (RI): ");
     }
     else
     {
-        printf("\n║  PC: %u  │  Instrução: ", cpu->pc);
+        printf("\n║  PC: %u  │  Instrução (RI): ", cpu->pc);
     }
     if (opcao == 1)
     {
-        printf("0x%04X                      ", instrucao_atual);
+        printf("0x%04X                      ", cpu->ri);
     }
     else if (opcao == 2)
     {
-        int16_para_binario(instrucao_atual);
+        int16_para_binario(cpu->ri);
         printf("      ");
     }
     else
     {
-        //printf("%-5u (signed: %-5d)          ", instrucao_atual, (int16_t)instrucao_atual);
+        printf("%-5u (signed: %-5d)          ", cpu->ri, (int16_t)cpu->ri);
     }
 
     printf("\n╠══════════════════════════════════════════════════════════════════════╣");
@@ -169,7 +169,7 @@ void debug_geral(const InstrucaoDecodificada inst,
     // 1. PC e Instrução (16 bits)
 
     printf("%s", pseudo_instrucao[0] ? pseudo_instrucao : "Instrucao Pseudo: N/A");
-    printf("PC Atualizado: ");
+    printf("\nPC Atualizado: ");
     if (opcao == 1)
         int8_hexa(cpu->pc);
     else if (opcao == 2)
@@ -177,11 +177,11 @@ void debug_geral(const InstrucaoDecodificada inst,
     else
         printf("%d", cpu->pc);
 
-    printf(" | Instrucao executada: ");
+    printf(" | Instrucao sendo executada: ");
     if (opcao == 1)
-        int16_hexa(instrucao);
+        int16_hexa(cpu->ri);
     else if (opcao == 2)
-        int16_para_binario(instrucao);
+        int16_para_binario(cpu->ri);
     else
         printf("%d", instrucao);
 
@@ -240,15 +240,16 @@ void debug_geral(const InstrucaoDecodificada inst,
 
     // 3. Sinais de Controle (Sempre Binário como no Logisim)
     printf("\n\n============ Sinais de Controle ===============");
-    printf("\nULA Ctrl: ");
-    printf("IR: %04x | ", cpu->ri);
-    printf("RDM: %04x | ", cpu->rdm);
+    
+    printf("\nIR Atualizado: %04x | ", cpu->ri);
+    printf("RDM Atualizado: %04x | ", cpu->rdm);
     printf("A: %d | ", cpu->a);
     printf("B: %d | ", cpu->b);
     printf("Saida ULA: %d\n", cpu->saida_ula);
     printf("Estado Executado: %d\n", cpu->estado_atual);
     printf("UlaFonteA: %d | ", sinais.ula_fonte_a);
     printf("I ou D: %d | ", sinais.i_ou_d);
+    printf("ULA Ctrl: ");
     if (opcao == 1)
     {
         int8_hexa(sinais.controle_ula);
