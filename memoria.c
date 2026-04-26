@@ -3,18 +3,21 @@
 #include "utils.h"
 
 
-#pragma region MEMORIA_DE_DADOS
+
 
 
 
 #pragma region MEMORIA
 
-uint16_t ler_end_mem_instrucao(const CPU *p,uint16_t addr){
+uint16_t ler_end_mem(const CPU *p,uint16_t addr){
     return p->memoria[addr];
 }
-void escrever_end_mem_instrucao(CPU *p,uint16_t addr,uint16_t valor){ // Não sei se terá uso.
+void escrever_end_mem(CPU *p,uint16_t addr,uint16_t valor, SinaisDeControle sinais_de_controle){ 
+    if(sinais_de_controle.escrever_memoria == 0) return;
     p->memoria[addr] = valor;
 }
+
+
 
 #pragma endregion MEMORIA
 

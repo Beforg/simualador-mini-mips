@@ -67,6 +67,7 @@ EstadosControle proximo_estado(EstadosControle estado_atual, uint8_t opcode) {
   if (estado_atual == EX_BRANCH || estado_atual == EX_JUMP) return IF;
   if (estado_atual == LW_ACESSO_MEM) return MEM_WB;
   if (estado_atual == EX_TIPO_R) return END_TIPO_R;
+    return IF;
   
 }
 
@@ -228,7 +229,7 @@ static void gerar_sinais_estado_end_addi(SinaisDeControle *sinais_de_controle) {
         .escrever_reg = 1,
         .memoria_para_reg = 0,
         .ula_fonte_a = 1,
-        .ula_fonte_b = 0,
+        .ula_fonte_b = 2,
         .reg_destino = 0,
         .incremento_pc = 0,
         .pc_fonte = 0,
@@ -263,7 +264,7 @@ static void gerar_sinais_estado_end_tipo_r(SinaisDeControle *sinais_de_controle)
         .escrever_memoria = 0,
         .escrever_reg = 1,
         .memoria_para_reg = 0,
-        .ula_fonte_a = 0,
+        .ula_fonte_a = 1,
         .ula_fonte_b = 0,
         .reg_destino = 1,
         .incremento_pc = 0,
@@ -277,7 +278,7 @@ static void gerar_sinais_estado_end_tipo_r(SinaisDeControle *sinais_de_controle)
 
 static void gerar_sinais_estado_ex_branch(SinaisDeControle *sinais_de_controle) {
     *sinais_de_controle = (SinaisDeControle){
-        .controle_ula = 0b010,
+        .controle_ula = 0b110,
         .escrever_memoria = 0,
         .escrever_reg = 0,
         .memoria_para_reg = 0,

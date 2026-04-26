@@ -133,7 +133,7 @@ void carregar_menu_principal()
             setbuf(stdin,NULL);
             fgets(nome_arquivo,127,stdin);
             nome_arquivo[strcspn(nome_arquivo,"\n")] = '\0';
-            carregar_instrucoes(nome_arquivo, cpu.memoria_de_instrucao);
+            carregar_instrucoes_e_dados(nome_arquivo, &cpu);
             break;
         case CARREGAR_MEMORIA_DADOS:
            char aux[128];
@@ -141,7 +141,7 @@ void carregar_menu_principal()
             setbuf(stdin,NULL);
             fgets(aux,127,stdin);
             aux[strcspn(aux,"\n")] = '\0';
-            carregar_dat(aux,cpu.memoria_de_dados);
+            carregar_dat(aux, &cpu);
 
             break;
         case IMPRIMIR_MEMORIAS:
@@ -163,7 +163,7 @@ void carregar_menu_principal()
             setbuf(stdin,NULL);
             fgets(buf,127,stdin);
             buf[strcspn(buf,"\n")] = '\0';
-            salvar_asm(buf,cpu.memoria_de_instrucao);
+            salvar_asm(buf, &cpu);
             
             break;
         }
@@ -174,7 +174,7 @@ void carregar_menu_principal()
             setbuf(stdin,NULL);
             fgets(buf,127,stdin);
             buf[strcspn(buf,"\n")] = '\0';
-            salvar_dat(buf,cpu.memoria_de_dados);
+            salvar_dat(buf, &cpu);
 
             break;
         }

@@ -22,7 +22,7 @@ static int validar_opcao_escolhida(int opcao);
  * @params: Nome do arquivo e Memória de Instruções da struct CPU.
  *
  * */
-void carregar_instrucoes_e_dados_e_instrucoes(const char *nome_arquivo, CPU *cpu) {
+void carregar_instrucoes_e_dados(const char *nome_arquivo, CPU *cpu) {
 	FILE *file;
 	file = fopen(nome_arquivo, "r");
 
@@ -201,13 +201,13 @@ static int validar_opcao_escolhida(int opcao) {
 	return opcao; // sucesso
 }
 
-void salvar_asm(const char *filename,const uint16_t *memoria_de_instrucao){
+void salvar_asm(const char *filename, const CPU *cpu){
     if (!filename || filename[0] == '\0'){
         puts("mini-mips-err->salvar_asm(): O filename não foi especificado.");
         return;
     }
 
-    if (!memoria_de_instrucao) {
+    if (!cpu) {
         puts("mini-mips-err->salvar_asm(): Variável memória de instrução não especificada.");
         return;
     }
@@ -220,10 +220,10 @@ void salvar_asm(const char *filename,const uint16_t *memoria_de_instrucao){
     }
 
     for (int i = 0; i < 256; i++) {
-        if (memoria_de_instrucao[i] == 0)
+        if (cpu->memoria[i] == 0)
             continue;
 
-		InstrucaoDecodificada instr = decodificar_instrucao(memoria_de_instrucao[i]);
+		InstrucaoDecodificada instr = decodificar_instrucao(cpu->memoria[i]);
         char linha[128] = {0};
         converter_para_asm(instr, linha);
         fprintf(fp, "%s\n", linha);
@@ -233,7 +233,7 @@ void salvar_asm(const char *filename,const uint16_t *memoria_de_instrucao){
     printf("mini-mips: seu %s foi gerado!\n", filename);
 }
 
-void salvar_dat(const char *filename,const int8_t *memoria_de_dados){
+void salvar_dat(const char *filename, const CPU *cpu){
 	// Verifica se o arquivo recebido e válido.
 	if(!filename || filename[0] == '\0'){
 		puts("mini-mips-err->salvar_dat(): O filename não foi especificado.");
@@ -241,7 +241,7 @@ void salvar_dat(const char *filename,const int8_t *memoria_de_dados){
 	}
 
 	// Verifica se o ponteiro é válido para os dados.
-	if(!memoria_de_dados){
+    if(!cpu){
 		puts("mini-mips-err->salvar_dat(): Variável memória de dados não especificada.");
 		return;
 	}
@@ -257,8 +257,8 @@ void salvar_dat(const char *filename,const int8_t *memoria_de_dados){
 
 	// Faz o dump da memória de dados, para o arquivo.
 	// Usando o macro PRId8 para printar o int8_t sem warning do compilador
-	for(int i = 0; i < 256; i++){
-		fprintf(fp,"%"PRId8"\n",memoria_de_dados[i]);
+    for(int i = 128; i < 256; i++){
+        fprintf(fp,"%"PRId8"\n", (int8_t)(cpu->memoria[i] & 0xFF));
 	}
 
 	// Fecha o buffer após uso.
@@ -269,7 +269,7 @@ void salvar_dat(const char *filename,const int8_t *memoria_de_dados){
 	return;
 }
 
-void carregar_dat(const char *filename, int8_t *memoria_de_dados) {
+void carregar_dat(const char *filename, CPU *cpu) {
     char line[16]; 
     int linha = 0;
 
@@ -278,7 +278,7 @@ void carregar_dat(const char *filename, int8_t *memoria_de_dados) {
         return;
     }
 
-    if (!memoria_de_dados) {
+    if (!cpu) {
         printf("mini-mips-err: Ponteiro de memória inválido.\n");
         return;
     }
@@ -294,7 +294,7 @@ void carregar_dat(const char *filename, int8_t *memoria_de_dados) {
         return;
     }
 
-    while (linha < 256 && fscanf(fp, "%15s", line) == 1) {
+    while (linha < 128 && fscanf(fp, "%15s", line) == 1) {
         char *endptr;
         long val = strtol(line, &endptr, 10);
 
@@ -309,7 +309,7 @@ void carregar_dat(const char *filename, int8_t *memoria_de_dados) {
         if (val < -128 || val > 127) {
             printf("Erro: %ld fora do intervalo int8_t na linha %d.\n", val, linha + 1);
         } else {
-            memoria_de_dados[linha] = (int8_t)val;
+            cpu->memoria[128 + linha] = (uint16_t)(uint8_t)((int8_t)val);
         }
 
         linha++;
