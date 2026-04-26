@@ -13,7 +13,7 @@ static void iniciar_cpu(CPU *cpu);
 static void executrar_ciclo(CPU *cpu, int opcao_debug);
 static void executar_programa_completo(CPU *cpu);
 static void incrementar_pc(CPU *cpu, SinaisDeControle sinais_de_controle);
-static void resolver_desvio(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisDeControle sinais_de_controle, ResultadoUla resultadoUla);
+//static void resolver_desvio(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisDeControle sinais_de_controle, ResultadoUla resultadoUla);
 //static uint16_t buscar_instrucao(const CPU *cpu);
 static uint8_t mux_reg_destino(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada);
 static int8_t mux_fonte_ula(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada, const CPU *cpu);
@@ -26,21 +26,8 @@ static int8_t mux_operador_a(CPU *cpu, SinaisDeControle sinais_de_controle, int8
 static int8_t mux_operador_b(CPU *cpu, SinaisDeControle sinais_de_controle, int8_t valor_registrador, InstrucaoDecodificada instrucao_decodificada);
 static uint8_t mux_i_ou_r(SinaisDeControle sinais_de_controle, CPU *cpu);
 static uint8_t mux_pc_fonte(SinaisDeControle sinais_de_controle, CPU *cpu, ResultadoUla resultadoUla, uint8_t endereco);
-
-static void estado_if(CPU *cpu);
-static void estado_id(CPU *cpu);
-static void estado_ex_mem_imm(CPU *cpu);
-static void estado_mem_read(CPU *cpu);
-static void estado_wb_lw(CPU *cpu);
-static void estado_mem_write(CPU *cpu);
-static void estado_wb_addi(CPU *cpu);
-static void estado_ex_r(CPU *cpu);
-static void estado_wb_r(CPU *cpu);
-static void estado_ex_beq(CPU *cpu);
-static void estado_ex_j(CPU *cpu);
 static void escrever_ri(CPU *cpu, uint16_t instrucao, SinaisDeControle sinais_de_controle);
 static void escrever_rdm(CPU *cpu, uint16_t dado);
-
 /* Funções de debug */
 
 /* Ver implementação e qual o comportamento do reset. */
@@ -90,8 +77,6 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	uint8_t registrador_destino_indice;
 	uint8_t endereco; // índice do registrador a ser escrito no banco de registradores, selecionado pelo mux RegDest
 	ResultadoUla resultadoUla; // Resultado das operações da ULA, incluindo o resultado e o sinal de zero (para branch)
-	int estado_executa_ula;
-
 
 	//Buscar instrucao 
 	instrucao_decodificada = decodificar_instrucao(cpu->ri);
@@ -101,17 +86,7 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	instrucao = ler_end_mem(cpu, endereco);
 
 	escrever_ri(cpu, instrucao, sinais_de_controle);
-	if (cpu->estado_atual == IF || cpu->estado_atual == LW_ACESSO_MEM) {
-		escrever_rdm(cpu, instrucao);
-	}
-
-
-	// Decodificar instrucao 
-	
-	
-
-	// PC = PC + 1;
-    //incrementar_pc(cpu, sinais_de_controle); 
+	escrever_rdm(cpu, instrucao);
 
 	// mux da arquitetura que vai selecionar o RegDest (indica o registrador a ser escrito no banco de regs)
 	// ele escolhe entre o campo rd ou rt da instrução decodificada, dependendo do tipo da instrução (R ou I).
@@ -123,23 +98,11 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	operador_a = mux_operador_a(cpu, sinais_de_controle, cpu->a);
 	operador_b = mux_operador_b(cpu, sinais_de_controle, cpu->b, instrucao_decodificada);
 	
-	// Execucao 
-	estado_executa_ula = (cpu->estado_atual == IF ||
-		cpu->estado_atual == ID ||
-		cpu->estado_atual == EX_MEM_IMM ||
-		cpu->estado_atual == EX_TIPO_R ||
-		cpu->estado_atual == EX_BRANCH);
-
-	if (estado_executa_ula) {
-		resultadoUla = executar(operador_a, operador_b, sinais_de_controle.controle_ula);
-		cpu->saida_ula = resultadoUla.resultado;
-	} else {
-		resultadoUla.resultado = cpu->saida_ula;
-		resultadoUla.zero = (cpu->saida_ula == 0);
-		resultadoUla.overflow = 0;
-	}
-
+	resultadoUla = executar(operador_a, operador_b, sinais_de_controle.controle_ula);
+	
+	
 	cpu->pc = mux_pc_fonte(sinais_de_controle, cpu, resultadoUla, instrucao_decodificada.endereco);
+	cpu->saida_ula = resultadoUla.resultado;
 	// acesso a memoria 
 	escrever_end_mem(cpu, endereco, cpu->b, sinais_de_controle);
 	valor_write_back = mux_memoria_para_reg(sinais_de_controle, instrucao_decodificada, cpu);
@@ -154,7 +117,7 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 }
 
 static void executar_programa_completo(CPU *cpu) {
-	while (cpu->memoria[cpu->pc] != 0) {
+	for (int i = 0; i < 128; i++) {
 		executrar_ciclo(cpu, 0);
 	}
 }
@@ -280,51 +243,3 @@ static void incrementar_pc(CPU *cpu, SinaisDeControle sinais_de_controle) {
 }
 
 
-static void estado_if(CPU *cpu) {
-
-}
-static void estado_id(CPU *cpu) {
-
-}
-static void estado_ex_mem_imm(CPU *cpu) {
-
-}
-static void estado_mem_read(CPU *cpu) {
-
-}
-static void estado_wb_lw(CPU *cpu) {
-
-}
-static void estado_mem_write(CPU *cpu) {
-
-}
-static void estado_wb_addi(CPU *cpu) {
-
-}
-static void estado_ex_r(CPU *cpu) {
-
-}
-static void estado_wb_r(CPU *cpu) {
-
-}
-static void estado_ex_beq(CPU *cpu) {
-
-}
-static void estado_ex_j(CPU *cpu) {
-	
-}
-
-
-static void resolver_desvio(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisDeControle sinais_de_controle, ResultadoUla resultadoUla) {
-	if (sinais_de_controle.jump) {
-        cpu->pc = endereco;
-        return;
-    }
-
-	if (sinais_de_controle.branch) {
-        if (resultadoUla.zero) {
-            cpu->pc = cpu->pc + imediato; //zero = 1 
-        } 
-        return;
-    }
-}

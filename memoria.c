@@ -12,9 +12,11 @@
 uint16_t ler_end_mem(const CPU *p,uint16_t addr){
     return p->memoria[addr];
 }
-void escrever_end_mem(CPU *p,uint16_t addr,uint16_t valor, SinaisDeControle sinais_de_controle){ 
+void escrever_end_mem(CPU *p,uint16_t addr,int8_t valor, SinaisDeControle sinais_de_controle){ 
+    uint16_t valor_uint16 = (uint16_t) valor; // Converte o valor para uint16_t
     if(sinais_de_controle.escrever_memoria == 0) return;
-    p->memoria[addr] = valor;
+    p->memoria[128 + addr] = valor_uint16;
+    printf("mini-mips: O endereço de memória [%u] tem um novo valor: %d\n",addr,valor);
 }
 
 
@@ -59,11 +61,19 @@ void imprimirMemoria(const CPU *p, TipoMemoria tipo, OpcaoBase base) {
      if (tipo == INSTRUCAO) {
         puts("\n=================== MEMÓRIA DE PROGRAMA ===================");
         for (int i = 0; i < 256; i++) {
-            printf("%3d: ", i);
+            if (i <= 127 ) {
+                            printf("%3d: ", i);
             if (base == HEXADECIMAL) int16_hexa(p->memoria[i]);
             else if (base == BINARIO) int16_para_binario(p->memoria[i]);
             else printf("%d", p->memoria[i]);
             printf(i % 4 == 3 ? "\n" : " | ");
+            } else {
+                printf("%u: ", i);
+                if (base == HEXADECIMAL) int16_hexa(p->memoria[i]);
+                else if (base == BINARIO) int16_para_binario(p->memoria[i]);
+                else printf("%d", (int8_t)p->memoria[i]);
+                printf(i % 4 == 3 ? "\n" : " | ");
+            }
         }
         puts("\n=========================================================");
     } 

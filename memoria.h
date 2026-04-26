@@ -37,7 +37,7 @@ typedef enum {
 #pragma region MEMORIA
 
 uint16_t ler_end_mem(const CPU *p,uint16_t addr); 
-void escrever_end_mem(CPU *p,uint16_t addr,uint16_t valor, SinaisDeControle sinais_de_controle); 
+void escrever_end_mem(CPU *p,uint16_t addr,int8_t valor, SinaisDeControle sinais_de_controle); 
 
 #pragma endregion MEMORIA
 

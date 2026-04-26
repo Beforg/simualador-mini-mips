@@ -4,6 +4,7 @@
 #include "memoria.h"
 #include "debug.h"
 #include "utils.h"
+#include "conversor.h"
 // Variável de controle do debug, por padrão, é false.
 static unsigned int debugAtivado = false;
 
@@ -153,16 +154,21 @@ void debug_geral(const InstrucaoDecodificada inst,
                  const ResultadoUla ula,
                  const CPU *cpu,
                  int opcao) // opcao: 0 = Decimal, 1 = Hexa, 2 = Binario
-{
+{   
+    char pseudo_instrucao[64] = {0};
+    converter_para_asm(inst, pseudo_instrucao);
 
     if (!debugAtivado)
     {
         return;
     }
 
+
     printf("\n============ DEBUG CPU =====================\n");
 
     // 1. PC e Instrução (16 bits)
+
+    printf("%s", pseudo_instrucao[0] ? pseudo_instrucao : "Instrucao Pseudo: N/A");
     printf("PC Atualizado: ");
     if (opcao == 1)
         int8_hexa(cpu->pc);
@@ -240,8 +246,9 @@ void debug_geral(const InstrucaoDecodificada inst,
     printf("A: %d | ", cpu->a);
     printf("B: %d | ", cpu->b);
     printf("Saida ULA: %d\n", cpu->saida_ula);
-    printf("Estado Atual: %d\n", cpu->estado_atual);
+    printf("Estado Executado: %d\n", cpu->estado_atual);
     printf("UlaFonteA: %d | ", sinais.ula_fonte_a);
+    printf("I ou D: %d | ", sinais.i_ou_d);
     if (opcao == 1)
     {
         int8_hexa(sinais.controle_ula);
