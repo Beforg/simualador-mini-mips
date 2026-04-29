@@ -146,14 +146,12 @@ void carregar_menu_principal()
             break;
         case IMPRIMIR_MEMORIAS:
             imprimirMemoria(&cpu,INSTRUCAO,opcao_visualizacao_debug);
-            imprimirMemoria(&cpu,DADOS,opcao_visualizacao_debug);
             break;
         case IMPRIMIR_BANCO_REG:
             imprimirMemoria(&cpu,REGISTRADOR,opcao_visualizacao_debug);
             break;
         case IMPRIMIR_TODO_SIMULADOR:
             imprimirMemoria(&cpu,INSTRUCAO,opcao_visualizacao_debug);
-            imprimirMemoria(&cpu,DADOS,opcao_visualizacao_debug);
             imprimirMemoria(&cpu,REGISTRADOR,opcao_visualizacao_debug);
             break;
         case SALVAR_ASM:{
@@ -179,7 +177,9 @@ void carregar_menu_principal()
             break;
         }
         case EXECUTAR_PROGRAMA:
-            executar_cpu(&cpu);
+            while (cpu.pc < 128) {
+                avancar_cpu(&cpu, &pilha_back, opcao_visualizacao_debug);
+            }
             break;
         case EXECUTA_INSTRUCAO:
             avancar_cpu(&cpu, &pilha_back, opcao_visualizacao_debug);
