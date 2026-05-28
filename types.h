@@ -11,7 +11,7 @@ typedef struct {
 } ErSinais;
 
 typedef struct {
-    uint8_t escrever_memoria;
+  uint8_t escrever_memoria;
   uint8_t jump;
   uint8_t branch;
 } MemSinais;
@@ -41,7 +41,7 @@ typedef struct {
   int8_t imediato;
   uint8_t pc_mais_um;
   uint8_t rd;
-  uint8_t rs;
+  uint8_t rt;
   
 } DI_EX;
 
@@ -51,7 +51,7 @@ typedef struct {
   uint8_t opcode; 
   int8_t ula_saida;
   int8_t b;
-  uint8_t rd;
+  uint8_t reg_destino; // rt ou rd
 } EX_MEM;
 
 typedef struct {
@@ -59,7 +59,7 @@ typedef struct {
   uint8_t opcode;
   int8_t memoria_saida;
   int8_t ula_saida;
-  uint8_t rd;
+  uint8_t reg_destino; // rt ou rd
 } MEM_WB;
 
 typedef enum {

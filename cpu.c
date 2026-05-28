@@ -15,15 +15,27 @@ static void executar_programa_completo(CPU *cpu);
 static void incrementar_pc(CPU *cpu, SinaisDeControle sinais_de_controle);
 static void resolver_desvio(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisDeControle sinais_de_controle, ResultadoUla resultadoUla);
 //static uint16_t buscar_instrucao(const CPU *cpu);
-static uint8_t mux_reg_destino(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada);
+//static uint8_t mux_reg_destino(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada);
 static int8_t mux_fonte_ula(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada, const CPU *cpu);
 static int8_t mux_memoria_para_reg(
 	const SinaisDeControle sinais_de_controle, 
 	const InstrucaoDecodificada instrucao_decodificada,  
 	const CPU *cpu, const ResultadoUla resultadoUla);
-
-
-/* Funções de debug */
+/* Funções pipeline */
+static uint8_t mux_reg_destino(CPU* cpu);
+static uint8_t atualizar_pc(
+    CPU *cpu, ResultadoUla resultadoUla, 
+    InstrucaoDecodificada instrucao_decodificada,
+    SinaisDeControle sinais_de_controle);
+static int8_t mux_write_back(CPU* cpu);
+static uint8_t mux_pc_mais_um_ou_branch_ou_jump(
+        CPU *cpu, SinaisDeControle sinais_de_controle, 
+        InstrucaoDecodificada instrucao_decodificada, 
+        uint8_t pc_mais_um_ou_branch);
+static uint8_t mux_pc_mais_um_ou_branch(CPU *cpu, ResultadoUla resultadoUla);
+static int desvio_condicional_tomado(CPU *cpu, ResultadoUla resultadoUla);
+static uint8_t somador_pc_branch(CPU* cpu);
+static uint8_t somador_pc_mais_um(CPU* cpu);
 
 /* Ver implementação e qual o comportamento do reset. */
 void voltar_cpu(CPU *cpu, PilhaCPU *pilha) {
@@ -71,7 +83,7 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	int8_t valor_write_back; // valor a ser escrito no banco de registradores (DMem ou ResultadoUla)
 	uint8_t registrador_destino_indice; // índice do registrador a ser escrito no banco de registradores, selecionado pelo mux RegDest
 	ResultadoUla resultadoUla; // Resultado das operações da ULA, incluindo o resultado e o sinal de zero (para branch)
-
+	int8_t valor_memoria; // Valor lido da memória de dados (para instruções de load)	
 	
 
 	
@@ -93,28 +105,66 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 
 	// mux da arquitetura que vai selecionar o RegDest (indica o registrador a ser escrito no banco de regs)
 	// ele escolhe entre o campo rd ou rt da instrução decodificada, dependendo do tipo da instrução (R ou I).
-	registrador_destino_indice = mux_reg_destino(sinais_de_controle, instrucao_decodificada);
+	//registrador_destino_indice = mux_reg_destino(sinais_de_controle, instrucao_decodificada);
 
-	// acesso a memoria 
+	// acesso a memoria (RETIRAR SINBAIS DE CONTROLE DPS)
 	escrever_end_mem_dados(cpu, cpu->ex_mem.ula_saida, cpu->ex_mem.b, sinais_de_controle);
-	valor_write_back = mux_memoria_para_reg(sinais_de_controle, instrucao_decodificada, cpu, resultadoUla);
+	valor_write_back = mux_write_back(cpu);
+	valor_memoria = ler_end_mem_dados(cpu, cpu->ex_mem.ula_saida);
 
 	// write back 
-	escrever_registrador(cpu, cpu->mem_wb.rd, valor_write_back, sinais_de_controle);
+	escrever_registrador(cpu, cpu->mem_wb.reg_destino, valor_write_back, sinais_de_controle);
+	
+	 // Atualiza o RI para a próxima instrução a ser decodificada no próximo ciclo
+	cpu->bi_di.pc_mais_um = somador_pc_mais_um(cpu); // Calcula o PC + 1 para ser usado no próximo ciclo, especialmente para instruções de branch
+	cpu->pc = atualizar_pc(cpu, resultadoUla, instrucao_decodificada, sinais_de_controle);
+	cpu->bi_di.ri = ler_end_mem_instrucao(cpu, cpu->pc);
+	//resolver_desvio(cpu, instrucao_decodificada.imediato, instrucao_decodificada.endereco, sinais_de_controle, resultadoUla);
+	
+	cpu->di_ex.er.memoria_para_reg = sinais_de_controle.memoria_para_reg;
+	cpu->di_ex.er.escrever_reg = sinais_de_controle.escrever_reg;
+	cpu->di_ex.mem_sinais.branch = sinais_de_controle.branch;
+	cpu->di_ex.mem_sinais.jump = sinais_de_controle.jump;
+	cpu->di_ex.mem_sinais.escrever_memoria = sinais_de_controle.escrever_memoria;
+	cpu->di_ex.ex_sinais.reg_destino = sinais_de_controle.reg_destino;
+	cpu->di_ex.ex_sinais.ula_fonte = sinais_de_controle.ula_fonte;
+	cpu->di_ex.ex_sinais.controle_ula = sinais_de_controle.controle_ula;
+	cpu->di_ex.opcode = instrucao_decodificada.opcode;
+	cpu->di_ex.a = valor_reg_a;
+	cpu->di_ex.b = valor_reg_b;
+	cpu->di_ex.imediato = instrucao_decodificada.imediato;
+	cpu->di_ex.pc_mais_um = cpu->bi_di.pc_mais_um;
+	cpu->di_ex.rd = instrucao_decodificada.rd;
+	cpu->di_ex.rt = instrucao_decodificada.rt;
 
-	
-	resolver_desvio(cpu, instrucao_decodificada.imediato, instrucao_decodificada.endereco, sinais_de_controle, resultadoUla);
-	
+	cpu->ex_mem.er = cpu->di_ex.er;
+	cpu->ex_mem.mem_sinais = cpu->di_ex.mem_sinais;
+	cpu->ex_mem.opcode = cpu->di_ex.opcode;
+	cpu->ex_mem.ula_saida = resultadoUla.resultado;
+	cpu->ex_mem.b = cpu->di_ex.b;
+	cpu->ex_mem.reg_destino = mux_reg_destino(cpu);
+
+	cpu->mem_wb.er = cpu->ex_mem.er;
+	cpu->mem_wb.memoria_saida = valor_memoria;
+	cpu->mem_wb.opcode = cpu->ex_mem.opcode;
+	cpu->mem_wb.ula_saida = cpu->ex_mem.ula_saida;
+	cpu->mem_wb.reg_destino = cpu->ex_mem.reg_destino;
+
 	debug_geral(instrucao_decodificada,instrucao, sinais_de_controle, resultadoUla, cpu, opcao_debug);
 	
 }
 
 // Funçoes PIPELINE =================== :
 
-
+static uint8_t mux_reg_destino(CPU* cpu) {
+	if (cpu->di_ex.ex_sinais.reg_destino == 0) {
+		return cpu->di_ex.rt; // Para instruções do tipo I, o destino é rt
+	} else {
+		return cpu->di_ex.rd; // Para instruções do tipo R, o destino é rd
+	}
+}
 static uint8_t atualizar_pc(
 	CPU *cpu, ResultadoUla resultadoUla, 
-	int8_t imediato, 
 	InstrucaoDecodificada instrucao_decodificada,
 	SinaisDeControle sinais_de_controle) {
 	uint8_t pc_mais_um_ou_branch = mux_pc_mais_um_ou_branch(cpu, resultadoUla);
@@ -122,8 +172,12 @@ static uint8_t atualizar_pc(
 	return mux_pc_mais_um_ou_branch_ou_jump(cpu, sinais_de_controle, instrucao_decodificada, pc_mais_um_ou_branch);
 }
 
-static int8_t mux_write_back() {
-	
+static int8_t mux_write_back(CPU* cpu) {
+	if (cpu->mem_wb.er.memoria_para_reg == 0) {
+		return cpu->mem_wb.memoria_saida;
+	} else {
+		return cpu->mem_wb.ula_saida;
+	}
 }
 
 static uint8_t mux_pc_mais_um_ou_branch_ou_jump(
@@ -192,14 +246,6 @@ static void iniciar_cpu(CPU *cpu)
 	}
 }
 
-static uint8_t mux_reg_destino(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada)
-{
-	if (sinais_de_controle.reg_destino == 1)
-	{
-		return instrucao_decodificada.rd;
-	}
-	return instrucao_decodificada.rt;
-}
 static int8_t mux_fonte_ula(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada, const CPU *cpu)
 {
 	if (sinais_de_controle.ula_fonte == 1)
