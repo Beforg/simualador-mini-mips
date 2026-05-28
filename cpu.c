@@ -66,39 +66,41 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	InstrucaoDecodificada instrucao_decodificada;
 	SinaisDeControle sinais_de_controle;
 
-	int8_t operador_a;		 // Read register 1
-	int8_t operador_b;		 // Read register 2 ou imediato
+	int8_t valor_reg_a;		 // Read register 1
+	int8_t valor_reg_b;		 // Read register 2 ou imediato
 	int8_t valor_write_back; // valor a ser escrito no banco de registradores (DMem ou ResultadoUla)
 	uint8_t registrador_destino_indice; // índice do registrador a ser escrito no banco de registradores, selecionado pelo mux RegDest
 	ResultadoUla resultadoUla; // Resultado das operações da ULA, incluindo o resultado e o sinal de zero (para branch)
 
-	// Buscar instrucao 
-	instrucao = ler_end_mem_instrucao(cpu, cpu->pc);
 	
-	// Decodificar instrucao 
-	instrucao_decodificada = decodificar_instrucao(instrucao);
+
+	
+
+	
+	// Buscar instrucao 
+	//instrucao = ler_end_mem_instrucao(cpu, cpu->bi_di.ri);
+	// BI / DI
+	instrucao_decodificada = decodificar_instrucao(cpu->bi_di.ri);
 	sinais_de_controle = gerar_sinais_de_controle(instrucao_decodificada.opcode, instrucao_decodificada.funct);
+	valor_reg_a = ler_registrador(cpu, instrucao_decodificada.rs);
+	valor_reg_b = ler_registrador(cpu, instrucao_decodificada.rt);
+
+	resultadoUla = executar(cpu->di_ex.a, cpu->di_ex.b, cpu->di_ex.ex_sinais.controle_ula);
+
 
 	// PC = PC + 1;
-    incrementar_pc(cpu, sinais_de_controle); 
+   // incrementar_pc(cpu, sinais_de_controle); 
 
 	// mux da arquitetura que vai selecionar o RegDest (indica o registrador a ser escrito no banco de regs)
 	// ele escolhe entre o campo rd ou rt da instrução decodificada, dependendo do tipo da instrução (R ou I).
 	registrador_destino_indice = mux_reg_destino(sinais_de_controle, instrucao_decodificada);
 
-	// valores que serão operados na ula: _a RS, _b RT ou imediato dependendo do tipo da instrução (R ou I)
-	operador_a = ler_registrador(cpu, instrucao_decodificada.rs);
-	operador_b = mux_fonte_ula(sinais_de_controle, instrucao_decodificada, cpu);
-	
-	// Execucao 
-	resultadoUla = executar(operador_a, operador_b, sinais_de_controle.controle_ula);
-
 	// acesso a memoria 
-	escrever_end_mem_dados(cpu, resultadoUla.resultado, cpu->banco_de_regs[instrucao_decodificada.rt], sinais_de_controle);
+	escrever_end_mem_dados(cpu, cpu->ex_mem.ula_saida, cpu->ex_mem.b, sinais_de_controle);
 	valor_write_back = mux_memoria_para_reg(sinais_de_controle, instrucao_decodificada, cpu, resultadoUla);
 
 	// write back 
-	escrever_registrador(cpu, registrador_destino_indice, valor_write_back, sinais_de_controle);
+	escrever_registrador(cpu, cpu->mem_wb.rd, valor_write_back, sinais_de_controle);
 
 	
 	resolver_desvio(cpu, instrucao_decodificada.imediato, instrucao_decodificada.endereco, sinais_de_controle, resultadoUla);
@@ -106,6 +108,57 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	debug_geral(instrucao_decodificada,instrucao, sinais_de_controle, resultadoUla, cpu, opcao_debug);
 	
 }
+
+// Funçoes PIPELINE =================== :
+
+
+static uint8_t atualizar_pc(
+	CPU *cpu, ResultadoUla resultadoUla, 
+	int8_t imediato, 
+	InstrucaoDecodificada instrucao_decodificada,
+	SinaisDeControle sinais_de_controle) {
+	uint8_t pc_mais_um_ou_branch = mux_pc_mais_um_ou_branch(cpu, resultadoUla);
+
+	return mux_pc_mais_um_ou_branch_ou_jump(cpu, sinais_de_controle, instrucao_decodificada, pc_mais_um_ou_branch);
+}
+
+static int8_t mux_write_back() {
+	
+}
+
+static uint8_t mux_pc_mais_um_ou_branch_ou_jump(
+	CPU *cpu, SinaisDeControle sinais_de_controle, 
+	InstrucaoDecodificada instrucao_decodificada, 
+	uint8_t pc_mais_um_ou_branch) {
+	if (sinais_de_controle.jump) {
+		return instrucao_decodificada.endereco; // Atualiza o PC para o endereço do jump
+	} else {
+		return pc_mais_um_ou_branch; // Incrementa o PC ou desvia condicionalmente
+	}
+}
+
+static uint8_t mux_pc_mais_um_ou_branch(CPU *cpu, ResultadoUla resultadoUla) {
+	if (desvio_condicional_tomado(cpu, resultadoUla) == 1) { // Verifica se é um branch e se o resultado da ULA é zero
+		return somador_pc_branch(cpu); // Atualiza o PC para o endereço do branch
+	} else {
+		return somador_pc_mais_um(cpu); // Incrementa o PC normalmente
+	}
+}
+
+static int desvio_condicional_tomado(CPU *cpu, ResultadoUla resultadoUla) {
+	return cpu->di_ex.mem_sinais.branch && resultadoUla.zero; // Retorna 1 se o branch for tomado, caso contrário retorna 0
+}
+
+static uint8_t somador_pc_branch(CPU* cpu) {
+	uint8_t endereco_branch = cpu->di_ex.pc_mais_um + cpu->di_ex.imediato; // endereço do branch
+	return endereco_branch;
+}
+
+// Valor usado no MUX pc_mais_um ou branch e no reg Pc_mais_um do BI/DI
+static uint8_t somador_pc_mais_um(CPU* cpu) {
+	return cpu->pc + 1; // PC + 1
+}
+// ------------------------------
 
 static void executar_programa_completo(CPU *cpu) {
 	while (cpu->memoria_de_instrucao[cpu->pc] != 0) {
@@ -115,8 +168,13 @@ static void executar_programa_completo(CPU *cpu) {
 
 static void iniciar_cpu(CPU *cpu)
 {
+	// Novoas variáveis para o pipeline:
 	int posicao;
 	cpu->pc = 0;
+	cpu->bi_di = (BI_DI){0, 0};
+	cpu->di_ex = (DI_EX){0};
+	cpu->ex_mem = (EX_MEM){0};
+	cpu->mem_wb = (MEM_WB){0};
 
 	for (posicao = 0; posicao < 256; posicao++)
 	{
@@ -187,3 +245,4 @@ static void resolver_desvio(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisD
         return;
     }
 }
+

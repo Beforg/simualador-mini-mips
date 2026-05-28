@@ -10,7 +10,7 @@ int8_t ler_end_mem_dados(const CPU *p,uint16_t addr){
     return p->memoria_de_dados[addr];
 }                
 void escrever_end_mem_dados(CPU *p,uint8_t addr,int8_t valor, SinaisDeControle sinais_de_controle){
-    if (sinais_de_controle.escrever_memoria == 0) return;
+    if (p->ex_mem.mem_sinais.escrever_memoria == 0) return;
     p->memoria_de_dados[addr] = (uint8_t) valor;
     printf("mini-mips: A memória [%u] tem um novo valor: %d\n",addr,valor);
 } 
@@ -35,7 +35,7 @@ void escrever_end_mem_instrucao(CPU *p,uint16_t addr,uint16_t valor){ // Não se
 // Bloqueia a escrita
 
 void escrever_registrador(CPU *p, uint8_t id,int8_t valor, SinaisDeControle sinais_de_controle){
-    if (sinais_de_controle.escrever_reg == 0) return;
+    if (p->mem_wb.er.escrever_reg == 0) return;
     // Verifica se o usuário digitou r0 
     
 

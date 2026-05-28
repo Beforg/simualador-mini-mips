@@ -3,6 +3,65 @@
 
 #include <stdint.h>
 
+//novas estruturas:
+
+typedef struct {
+  uint8_t memoria_para_reg;
+  uint8_t escrever_reg;
+} ErSinais;
+
+typedef struct {
+    uint8_t escrever_memoria;
+  uint8_t jump;
+  uint8_t branch;
+} MemSinais;
+
+typedef struct {
+  uint8_t controle_ula;
+  uint8_t ula_fonte;
+  uint8_t reg_destino;
+} ExSinais;
+
+typedef struct {
+  uint8_t pc_mais_um;
+  uint16_t ri;
+} BI_DI;
+
+typedef struct {
+  //registrador ER:
+  ErSinais er;
+  //registrador MEM:
+  MemSinais mem_sinais;
+  //registrador EX:
+  ExSinais ex_sinais;
+
+  uint8_t opcode; 
+  int8_t a;
+  int8_t b;
+  int8_t imediato;
+  uint8_t pc_mais_um;
+  uint8_t rd;
+  uint8_t rs;
+  
+} DI_EX;
+
+typedef struct {
+  ErSinais er;
+  MemSinais mem_sinais;
+  uint8_t opcode; 
+  int8_t ula_saida;
+  int8_t b;
+  uint8_t rd;
+} EX_MEM;
+
+typedef struct {
+  ErSinais er;
+  uint8_t opcode;
+  int8_t memoria_saida;
+  int8_t ula_saida;
+  uint8_t rd;
+} MEM_WB;
+
 typedef enum {
   TIPO_R,
   TIPO_I,
@@ -44,10 +103,14 @@ typedef enum {
 } Funct;
 
 typedef struct {
- uint16_t pc;
+ uint8_t pc; // corrigido de 16 para 8
  uint16_t memoria_de_instrucao[256];
  int8_t memoria_de_dados[256];
  int8_t banco_de_regs[8];
+ BI_DI bi_di;
+ DI_EX di_ex;
+ EX_MEM ex_mem;
+ MEM_WB mem_wb;
 } CPU;
 
 typedef struct {
