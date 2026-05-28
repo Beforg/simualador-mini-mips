@@ -4,7 +4,6 @@
 #include "memoria.h"
 #include "debug.h"
 #include "utils.h"
-#include "conversor.h"
 // Variável de controle do debug, por padrão, é false.
 static unsigned int debugAtivado = false;
 
@@ -31,7 +30,7 @@ void debug_legacy(const InstrucaoDecodificada instrucao_decodificada, const Sina
 
     printf("PC: %u\n", cpu->pc - 1);
     printf("Instrução executada: ");
-    int16_para_binario(cpu->memoria_principal[cpu->pc - 1]);
+    int16_para_binario(cpu->memoria_de_instrucao[cpu->pc - 1]);
     printf("\n======= Instrução Decodificada ======= \n");
     printf("Tipo: ");
     int8_para_binario(instrucao_decodificada.tipo);
@@ -54,7 +53,7 @@ void debug_legacy(const InstrucaoDecodificada instrucao_decodificada, const Sina
     printf("Escrever Memoria: %d\n", sinais_de_controle.escrever_memoria);
     printf("Escrever Reg: %d\n", sinais_de_controle.escrever_reg);
     printf("Memoria para Reg: %d\n", sinais_de_controle.memoria_para_reg);
-    printf("ULA Fonte B: %d\n", sinais_de_controle.ula_fonte_b);
+    printf("ULA Fonte: %d\n", sinais_de_controle.ula_fonte);
     printf("Reg Destino: %d\n", sinais_de_controle.reg_destino);
     printf("Incremento PC: %d\n", sinais_de_controle.incremento_pc);
     printf("Jump: %d\n", sinais_de_controle.jump);
@@ -65,14 +64,14 @@ void debug_legacy(const InstrucaoDecodificada instrucao_decodificada, const Sina
     printf("Zero: %u\n", resultadoUla.zero);
 
     printf("PC novo: %u | ", cpu->pc);
-    printf("Instrução atual: %u\n", cpu->memoria_principal[cpu->pc]);
+    printf("Instrução atual: %u\n", cpu->memoria_de_instrucao[cpu->pc]);
 }
 
 void estado_atual_cpu(const CPU *cpu, int opcao)
 {
     const char *modo = (opcao == 1) ? "HEXADECIMAL" : (opcao == 2) ? "BINÁRIO"
                                                                    : "DECIMAL";
-    //uint16_t instrucao_atual = cpu->memoria_principal[cpu->pc];
+    uint16_t instrucao_atual = cpu->memoria_de_instrucao[cpu->pc];
 
     printf("\n╔══════════════════════════════════════════════════════════════════════╗");
     printf("\n║  ESTADO DA CPU - MODO: %-11s | Debug: %s                                      ", modo, debugAtivado ? "ATIVADO" : "DESATIVADO"  );
@@ -81,30 +80,30 @@ void estado_atual_cpu(const CPU *cpu, int opcao)
     // Seção do PC e Instrução
     if (opcao == 1)
     {
-        printf("\n║  PC: %u (0x%02X)  │  Instrução (RI): ", cpu->pc, cpu->pc);
+        printf("\n║  PC: %u (0x%02X)  │  Instrução: ", cpu->pc, cpu->pc);
     }
     else if (opcao == 2)
     {
         printf("\n║  PC: %u (", cpu->pc);
         int8_para_binario(cpu->pc);
-        printf(")  │  Instrução (RI): ");
+        printf(")  │  Instrução: ");
     }
     else
     {
-        printf("\n║  PC: %u  │  Instrução (RI): ", cpu->pc);
+        printf("\n║  PC: %u  │  Instrução: ", cpu->pc);
     }
     if (opcao == 1)
     {
-        printf("0x%04X                      ", cpu->ri);
+        printf("0x%04X                      ", instrucao_atual);
     }
     else if (opcao == 2)
     {
-        int16_para_binario(cpu->ri);
+        int16_para_binario(instrucao_atual);
         printf("      ");
     }
     else
     {
-        printf("%-5u (signed: %-5d)          ", cpu->ri, (int16_t)cpu->ri);
+        //printf("%-5u (signed: %-5d)          ", instrucao_atual, (int16_t)instrucao_atual);
     }
 
     printf("\n╠══════════════════════════════════════════════════════════════════════╣");
@@ -153,57 +152,35 @@ void debug_geral(const InstrucaoDecodificada inst,
                  const SinaisDeControle sinais,
                  const ResultadoUla ula,
                  const CPU *cpu,
-                 EstadosControle proximo_estado,
-                 int opcao,
-                 const InstrucaoDecodificada instrucao_buscada) // opcao: 0 = Decimal, 1 = Hexa, 2 = Binario
-{   
-    char pseudo_instrucao[64] = {0};
-    char proxima_instrucao_pseudo[64] = {0};
-    converter_para_asm(instrucao_buscada, proxima_instrucao_pseudo);
-    converter_para_asm(inst, pseudo_instrucao);
+                 int opcao) // opcao: 0 = Decimal, 1 = Hexa, 2 = Binario
+{
 
     if (!debugAtivado)
     {
         return;
     }
 
-
-    printf("\n=========================== DEBUG CPU ============================================\n");
+    printf("\n============ DEBUG CPU =====================\n");
 
     // 1. PC e Instrução (16 bits)
-    if (cpu->estado_atual != 0)
-    {
-        printf("Instrução Assembly (RI): ");
-        printf("%s", pseudo_instrucao[0] ? pseudo_instrucao : "Instrucao Assembly: N/A");
-    }
-    printf("\nPC Atualizado: ");
+    printf("PC Atualizado: ");
     if (opcao == 1)
         int8_hexa(cpu->pc);
     else if (opcao == 2)
         int8_para_binario(cpu->pc);
     else
         printf("%d", cpu->pc);
-    if (cpu->estado_atual == 0) {
-        printf(" | Instrução buscada: ");
-    } else {
-        printf(" | Instrução sendo executada: ");
-    }
-    if (opcao == 1)
-        int16_hexa(cpu->ri);
 
-        
+    printf(" | Instrucao executada: ");
+    if (opcao == 1)
+        int16_hexa(instrucao);
     else if (opcao == 2)
-        int16_para_binario(cpu->ri);
+        int16_para_binario(instrucao);
     else
         printf("%d", instrucao);
-    if (cpu->estado_atual == 0) {
-        printf(" (%s)", proxima_instrucao_pseudo[0] ? proxima_instrucao_pseudo : "N/A");
-    }
-    printf("\nEstado Executado: %d | Proximo Estado: %d", cpu->estado_atual, proximo_estado);
-    
-    
+
     // 2. Campos Decodificados (8 bits)
-    printf("\n\n====================== Instrução Decodificada ====================================");  
+    printf("\n\n====== Instrução Decodificada ======");
     switch (inst.tipo){
         case TIPO_R:
             printf("\nTipo: R \n");
@@ -243,7 +220,7 @@ void debug_geral(const InstrucaoDecodificada inst,
         case TIPO_J:
             printf("\nTipo: J \n");
 
-            printf("Opcode: ");
+            printf("\nOpcode: ");
             opcao == 1 ? int8_hexa(inst.opcode) : (opcao == 2 ? print_int_4bits(inst.opcode) : printf("%d", inst.opcode));
 
             printf(" | Endereco: ");
@@ -256,72 +233,47 @@ void debug_geral(const InstrucaoDecodificada inst,
     }
 
     // 3. Sinais de Controle (Sempre Binário como no Logisim)
-    printf("\n\n=======================   Registradores    =======================================");
-    printf("\nRI Atualizado: 0x%04X | ", cpu->ri);
-    printf("RDM Atualizado: 0x%04X | ", cpu->rdm);
-    printf("A: %d | ", cpu->a);
-    printf("B: %d | ", cpu->b);
-    printf("Saida ULA: %d\n", cpu->saida_ula);
-    printf("\n\n======================= Sinais de Controle =======================================");
-    
-    if ( opcao == 1) {
-        printf("\nUlaFonteA: 0x%02X | ", sinais.ula_fonte_a);
-        printf("I ou D: 0x%02X | ", sinais.i_ou_d);
-    } else if (opcao == 2) {
-        printf("\nUlaFonteA: %.2b| ", sinais.ula_fonte_a);
-        printf("I ou D: %.1b | ", sinais.i_ou_d);
-    } else {
-        printf("\nUlaFonteA: %d | ", sinais.ula_fonte_a);
-        printf("I ou D: %d | ", sinais.i_ou_d);
-    }
-    printf("ULA Ctrl: ");
+    printf("\n\n============ Sinais de Controle ===============");
+    printf("\nULA Ctrl: ");
     if (opcao == 1)
     {
         int8_hexa(sinais.controle_ula);
-         printf(" | EscMem: 0x%02X | \nEscReg: 0x%02X | Mem2Reg: 0x%02X | UlaFonteB: 0x%02X",
-             sinais.escrever_memoria, sinais.escrever_reg, sinais.memoria_para_reg, sinais.ula_fonte_b);
-        printf(" | RegDest: 0x%02X | IncPC: 0x%02X | \nJump: 0x%02X | Branch: 0x%02X | ",
+        printf(" | EscMem: 0x%02X | EscReg: 0x%02X | Mem2Reg: 0x%02X | UlaFonte: 0x%02X",
+               sinais.escrever_memoria, sinais.escrever_reg, sinais.memoria_para_reg, sinais.ula_fonte);
+        printf("\n | RegDest: 0x%02X | IncPC: 0x%02X | Jump: 0x%02X | Branch: 0x%02X",
                sinais.reg_destino, sinais.incremento_pc, sinais.jump, sinais.branch);
-        printf("Escrever RI: 0x%02X | Fonte PC: 0x%02X", sinais.ir_escrever, sinais.pc_fonte);
-        
     }
     else if (opcao == 2)
     {
         print_int_3bits(sinais.controle_ula);
         printf(" | EscMem: ");
         printf("%d", sinais.escrever_memoria);
-        printf(" | \nEscReg: ");
+        printf(" | EscReg: ");
         printf("%d", sinais.escrever_reg);
         printf(" | Mem2Reg: ");
         printf("%d", sinais.memoria_para_reg);
-        printf(" | UlaFonteB: ");       
-        printf("%.2b", sinais.ula_fonte_b);
+        printf(" | UlaFonte: ");
+        printf("%d", sinais.ula_fonte);
         printf(" | RegDest: ");
         printf("%d", sinais.reg_destino);
         printf(" | IncPC: ");
         printf("%d", sinais.incremento_pc);
-        printf(" | \nJump: ");
+        printf(" | Jump: ");
         printf("%d", sinais.jump);
         printf(" | Branch: ");
         printf("%d", sinais.branch);
-        printf(" | Escrever RI: ");
-        printf("%d", sinais.ir_escrever);
-        printf(" | Fonte PC: ");
-        printf("%.2b", sinais.pc_fonte);
     }
     else
     {
         printf("%d", sinais.controle_ula);
-         printf(" | EscMem: %d | \nEscReg: %d | Mem2Reg: %d | UlaFonteB: %d",
-             sinais.escrever_memoria, sinais.escrever_reg, sinais.memoria_para_reg, sinais.ula_fonte_b);
-        printf(" | RegDest: %d | IncPC: %d | \nJump: %d | Branch: %d",
+        printf(" | EscMem: %d | EscReg: %d | Mem2Reg: %d | UlaFonte: %d",
+               sinais.escrever_memoria, sinais.escrever_reg, sinais.memoria_para_reg, sinais.ula_fonte);
+        printf(" | RegDest: %d | IncPC: %d | Jump: %d | Branch: %d",
                sinais.reg_destino, sinais.incremento_pc, sinais.jump, sinais.branch);
-        printf(" | Escrever RI: %d", sinais.ir_escrever);
-        printf(" | Fonte PC: %d", sinais.pc_fonte);
     }
 
     // 4. ULA
-    printf("\n\n=================================== ULA ==========================================\n");
+    printf("\n\n============ ULA ===============================\n");
     printf("Resultado: ");
     if (opcao == 1)
         int8_hexa(ula.resultado);
@@ -335,10 +287,7 @@ void debug_geral(const InstrucaoDecodificada inst,
     // imprimirMemoria((CPU*)cpu, REGISTRADOR, opcao);
     // imprimirMemoria((CPU*)cpu, DADOS, opcao);
 
-    printf("\n================================================================================\n");
-    if (proximo_estado == 0) {
-        printf("Instrução finalizada. Voltando ao estado de Busca.\n");
-    }
+    printf("\n================================================\n");
 }
 
 #pragma endregion FN_PUBLICAS
@@ -346,118 +295,118 @@ void debug_geral(const InstrucaoDecodificada inst,
 #pragma region FN_PRIVADAS
 
 // Função de log interna para o macro, ela é privada. Você pode ignorar
-// static void _log_internal(const char *prefix, const char *str)
-// {
-//     if (debugAtivado)
-//     {
-//         if (prefix && str)
-//         {
-//             printf("%s:%s\n", prefix, str);
-//         }
-//     }
-// }
-// void debug_decimal(const InstrucaoDecodificada inst,
-//                    const SinaisDeControle sinais,
-//                    const ResultadoUla ula,
-//                    const CPU *cpu)
-// {
+static void _log_internal(const char *prefix, const char *str)
+{
+    if (debugAtivado)
+    {
+        if (prefix && str)
+        {
+            printf("%s:%s\n", prefix, str);
+        }
+    }
+}
+void debug_decimal(const InstrucaoDecodificada inst,
+                   const SinaisDeControle sinais,
+                   const ResultadoUla ula,
+                   const CPU *cpu)
+{
 
-//     printf("\n--- DEBUG COMPLETO (DECIMAL) ---\n");
-//     printf("PC: %d | Instrução: %d\n", cpu->pc - 1, cpu->memoria[cpu->pc - 1]);
+    printf("\n--- DEBUG COMPLETO (DECIMAL) ---\n");
+    printf("PC: %d | Instrução: %d\n", cpu->pc - 1, cpu->memoria_de_instrucao[cpu->pc - 1]);
 
-//     printf("--- Campos da Instrução ---\n");
-//     printf("Tipo: %d | Opcode: %d | RS: %d | RT: %d | RD: %d | Funct: %d\n",
-//            inst.tipo, inst.opcode, inst.rs, inst.rt, inst.rd, inst.funct);
-//     printf("Imediato: %d | Endereço: %u\n", inst.imediato, inst.endereco);
+    printf("--- Campos da Instrução ---\n");
+    printf("Tipo: %d | Opcode: %d | RS: %d | RT: %d | RD: %d | Funct: %d\n",
+           inst.tipo, inst.opcode, inst.rs, inst.rt, inst.rd, inst.funct);
+    printf("Imediato: %d | Endereço: %u\n", inst.imediato, inst.endereco);
 
-//     printf("--- Sinais de Controle ---\n");
-//         printf("ULA_Ctrl: %d | MemWrite: %d | RegWrite: %d | MemToReg: %d | ALUSrcB: %d\n",
-//             sinais.controle_ula, sinais.escrever_memoria, sinais.escrever_reg, sinais.memoria_para_reg, sinais.ula_fonte_b);
-//     printf("RegDest: %d | Jump: %d | Branch: %d\n", sinais.reg_destino, sinais.jump, sinais.branch);
+    printf("--- Sinais de Controle ---\n");
+    printf("ULA_Ctrl: %d | MemWrite: %d | RegWrite: %d | MemToReg: %d | ALUSrc: %d\n",
+           sinais.controle_ula, sinais.escrever_memoria, sinais.escrever_reg, sinais.memoria_para_reg, sinais.ula_fonte);
+    printf("RegDest: %d | Jump: %d | Branch: %d\n", sinais.reg_destino, sinais.jump, sinais.branch);
 
-//     printf("--- ULA & Memória ---\n");
-//     printf("Resultado ULA: %d | Flag Zero: %u\n", ula.resultado, ula.zero);
-//     printf("PC Novo: %d\n", cpu->pc);
-// }
+    printf("--- ULA & Memória ---\n");
+    printf("Resultado ULA: %d | Flag Zero: %u\n", ula.resultado, ula.zero);
+    printf("PC Novo: %d\n", cpu->pc);
+}
 
-// void debug_binario(const InstrucaoDecodificada inst,
-//                    const SinaisDeControle sinais,
-//                    const ResultadoUla ula,
-//                    const CPU *cpu)
-// {
+void debug_binario(const InstrucaoDecodificada inst,
+                   const SinaisDeControle sinais,
+                   const ResultadoUla ula,
+                   const CPU *cpu)
+{
 
-//     printf("\n--- DEBUG COMPLETO (BINÁRIO) ---\n");
-//     printf("PC: ");
-//     int16_para_binario(cpu->pc - 1);
-//     printf(" | Instrução: ");
-//     int16_para_binario(cpu->memoria[cpu->pc - 1]);
+    printf("\n--- DEBUG COMPLETO (BINÁRIO) ---\n");
+    printf("PC: ");
+    int16_para_binario(cpu->pc - 1);
+    printf(" | Instrução: ");
+    int16_para_binario(cpu->memoria_de_instrucao[cpu->pc - 1]);
 
-//     printf("\n--- Campos da Instrução ---\n");
-//     printf("Opcode: ");
-//     int8_para_binario(inst.opcode);
-//     printf(" | RS: ");
-//     int8_para_binario(inst.rs);
-//     printf(" | RT: ");
-//     int8_para_binario(inst.rt);
-//     printf(" | RD: ");
-//     int8_para_binario(inst.rd);
-//     printf("\nFunct:  ");
-//     int8_para_binario(inst.funct);
-//     printf(" | Immed: ");
-//     int16_para_binario(inst.imediato);
+    printf("\n--- Campos da Instrução ---\n");
+    printf("Opcode: ");
+    int8_para_binario(inst.opcode);
+    printf(" | RS: ");
+    int8_para_binario(inst.rs);
+    printf(" | RT: ");
+    int8_para_binario(inst.rt);
+    printf(" | RD: ");
+    int8_para_binario(inst.rd);
+    printf("\nFunct:  ");
+    int8_para_binario(inst.funct);
+    printf(" | Immed: ");
+    int16_para_binario(inst.imediato);
 
-//     printf("\n--- Sinais de Controle ---\n");
-//     printf("ULA_Ctrl: ");
-//     int8_para_biWnario(sinais.controle_ula);
-//     printf(" | MemW: %d | RegW: %d | M2R: %d | Src: %d | J: %d | B: %d\n",
-//            sinais.escrever_memoria, sinais.escrever_reg, sinais.memoria_para_reg,
-//            sinais.ula_fonte_b, sinais.jump, sinais.branch);
+    printf("\n--- Sinais de Controle ---\n");
+    printf("ULA_Ctrl: ");
+    int8_para_binario(sinais.controle_ula);
+    printf(" | MemW: %d | RegW: %d | M2R: %d | Src: %d | J: %d | B: %d\n",
+           sinais.escrever_memoria, sinais.escrever_reg, sinais.memoria_para_reg,
+           sinais.ula_fonte, sinais.jump, sinais.branch);
 
-//     printf("--- ULA & Memória ---\n");
-//     printf("Resultado: ");
-//     int16_para_binario(ula.resultado);
-//     printf(" | Zero: %u\n", ula.zero);
-// }
+    printf("--- ULA & Memória ---\n");
+    printf("Resultado: ");
+    int16_para_binario(ula.resultado);
+    printf(" | Zero: %u\n", ula.zero);
+}
 
-// static void debug_hexa(const InstrucaoDecodificada inst,
-//                        const SinaisDeControle sinais,
-//                        const ResultadoUla ula,
-//                        const CPU *cpu)
-// {
-//     printf("\n--- DEBUG COMPLETO (HEXADECIMAL) ---\n");
-//     printf("PC: ");
-//     int16_hexa(cpu->pc - 1);
-//     printf(" | Instrução: ");
-//     int16_hexa(cpu->memoria[cpu->pc - 1]);
+static void debug_hexa(const InstrucaoDecodificada inst,
+                       const SinaisDeControle sinais,
+                       const ResultadoUla ula,
+                       const CPU *cpu)
+{
+    printf("\n--- DEBUG COMPLETO (HEXADECIMAL) ---\n");
+    printf("PC: ");
+    int16_hexa(cpu->pc - 1);
+    printf(" | Instrução: ");
+    int16_hexa(cpu->memoria_de_instrucao[cpu->pc - 1]);
 
-//     printf("\n--- Campos da Instrução ---\n");
-//     printf("Opcode: ");
-//     int8_hexa(inst.opcode);
-//     printf(" | RS: ");
-//     int8_hexa(inst.rs);
-//     printf(" | RT: ");
-//     int8_hexa(inst.rt);
-//     printf(" | RD: ");
-//     int8_hexa(inst.rd);
-//     printf("\nImediato: ");
-//     int16_hexa(inst.imediato);
-//     printf(" | Endereço: ");
-//     int16_hexa(inst.endereco);
+    printf("\n--- Campos da Instrução ---\n");
+    printf("Opcode: ");
+    int8_hexa(inst.opcode);
+    printf(" | RS: ");
+    int8_hexa(inst.rs);
+    printf(" | RT: ");
+    int8_hexa(inst.rt);
+    printf(" | RD: ");
+    int8_hexa(inst.rd);
+    printf("\nImediato: ");
+    int16_hexa(inst.imediato);
+    printf(" | Endereço: ");
+    int16_hexa(inst.endereco);
 
-//     printf("\n--- Sinais de Controle ---\n");
-//     printf("ULA_Ctrl: ");
-//     int8_hexa(sinais.controle_ula);
-//     printf(" | Sinais (W/R/J/B): %X%X%X%X",
-//            sinais.escrever_memoria, sinais.escrever_reg, sinais.jump, sinais.branch);
+    printf("\n--- Sinais de Controle ---\n");
+    printf("ULA_Ctrl: ");
+    int8_hexa(sinais.controle_ula);
+    printf(" | Sinais (W/R/J/B): %X%X%X%X",
+           sinais.escrever_memoria, sinais.escrever_reg, sinais.jump, sinais.branch);
 
-//     printf("\n--- ULA & Memória ---\n");
-//     printf("Resultado ULA: ");
-//     int16_hexa(ula.resultado);
-//     printf(" | Zero: %u\n", ula.zero);
+    printf("\n--- ULA & Memória ---\n");
+    printf("Resultado ULA: ");
+    int16_hexa(ula.resultado);
+    printf(" | Zero: %u\n", ula.zero);
 
-//     printf("--- Memórias ---\n");
-//     imprimirMemoria(cpu, DADOS, HEXADECIMAL);
-//     imprimirMemoria(cpu, INSTRUCAO, HEXADECIMAL);
-// }
+    printf("--- Memórias ---\n");
+    imprimirMemoria(cpu, DADOS, HEXADECIMAL);
+    imprimirMemoria(cpu, INSTRUCAO, HEXADECIMAL);
+}
 
 #pragma endregion FN_PRIVADAS

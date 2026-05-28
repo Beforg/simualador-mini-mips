@@ -9,8 +9,7 @@
 #include "debug.h"
 #include "memoria.h"
 #include "estatisticas.h"
-#include "assembler.h"
-#include "utils-asm.h"
+
 
 static int alterar_exibicao_do_debug();
 static void imprimir_menu(int debug_ativo, int modo_view);
@@ -33,6 +32,27 @@ static void imprimir_menu(int debug_ativo, int modo_view);
 
 #pragma region CONSTANTES
 
+// netoe1: Mensagem para dar print no menu, colocada em uma constante
+
+char *MENU_BUF =
+    "====================MENU-PRINCIPAL: MINI-MIPS-8BITS====================\n"
+    "1.  Carregar memória de instruções (.mem) \n"
+    "2.  Carregar memória de Dados (.dat) \n"
+    "3.  Imprimir memórias (instruções e dados) \n"
+    "4.  Imprimir banco de registradores \n"
+    "5.  Imprimir todo o simulador (registradores e memórias) \n"
+    "6.  Salvar .asm \n"
+    "7.  Salvar .dat \n"
+    "8.  Executa Programa (run) \n"
+    "9.  Executa uma instrução (Step) \n"
+    "10. Volta uma instrução (Back) \n"
+    "11. Ativar Debug\n"
+    "12. Alterar visualização do debug (Decimal, Hexadecimal, Binário)\n"
+    "13. Mostrar Estatísticas\n"
+    "0.  Encerrar \n"
+    "========================================================================";
+
+// netoe1: Enum para organizar as opções do menu.
 // Usando typedef para não precisar digitar enum toda a hora.
 typedef enum
 {
@@ -49,9 +69,7 @@ typedef enum
     VOLTAR_INSTRUCAO,
     ATIVAR_DEBUG,
     ALTERAR_DEBUG,
-    MOSTRAR_ESTATISTICAS,
-    ASSEMBLER,
-    EXECUTA_INSTRUCAO_CICLOS
+    MOSTRAR_ESTATISTICAS
 
 } EOpcoes;
 
@@ -79,7 +97,7 @@ int main(void)
 
 	 // Variável de controle do debug, por padrão, é false.
     setlocale(LC_ALL, ""); // netoe1: Suporte a acentos
-    reset_estatisticas(&cpu);
+    reset_estatisticas();
     carregar_menu_principal();
     
     return EXIT_SUCCESS; // EXIT_SUCCESS é um label definido para 0.
@@ -105,7 +123,8 @@ void carregar_menu_principal()
         //puts(MENU_BUF);
         receber_opcao_sanitizada("Selecione uma das opções:");
        
-        switch (opc) {
+        switch (opc)
+        {
         case CARREGAR_MEMORIA_INSTRUCOES:
             inicializar_cpu(&cpu);
             inicializar_pilha(&pilha_back);
@@ -114,28 +133,27 @@ void carregar_menu_principal()
             setbuf(stdin,NULL);
             fgets(nome_arquivo,127,stdin);
             nome_arquivo[strcspn(nome_arquivo,"\n")] = '\0';
-            carregar_instrucoes_e_dados(nome_arquivo, &cpu);
+            carregar_instrucoes(nome_arquivo, cpu.memoria_de_instrucao);
             break;
-        case CARREGAR_MEMORIA_DADOS:{
+        case CARREGAR_MEMORIA_DADOS:
            char aux[128];
             puts("Digite o nome do arquivo de dados .dat para carregar:");
             setbuf(stdin,NULL);
             fgets(aux,127,stdin);
             aux[strcspn(aux,"\n")] = '\0';
-            carregar_dat(aux, &cpu);
+            carregar_dat(aux,cpu.memoria_de_dados);
 
             break;
-        }
         case IMPRIMIR_MEMORIAS:
-            imprimirMemoria(&cpu,MODO_INSTRUCAO,opcao_visualizacao_debug);
-            imprimirMemoria(&cpu,MODO_DADOS,opcao_visualizacao_debug);
+            imprimirMemoria(&cpu,INSTRUCAO,opcao_visualizacao_debug);
+            imprimirMemoria(&cpu,DADOS,opcao_visualizacao_debug);
             break;
         case IMPRIMIR_BANCO_REG:
             imprimirMemoria(&cpu,REGISTRADOR,opcao_visualizacao_debug);
             break;
         case IMPRIMIR_TODO_SIMULADOR:
-            imprimirMemoria(&cpu,MODO_INSTRUCAO,opcao_visualizacao_debug);
-            imprimirMemoria(&cpu,MODO_DADOS,opcao_visualizacao_debug);
+            imprimirMemoria(&cpu,INSTRUCAO,opcao_visualizacao_debug);
+            imprimirMemoria(&cpu,DADOS,opcao_visualizacao_debug);
             imprimirMemoria(&cpu,REGISTRADOR,opcao_visualizacao_debug);
             break;
         case SALVAR_ASM:{
@@ -145,7 +163,7 @@ void carregar_menu_principal()
             setbuf(stdin,NULL);
             fgets(buf,127,stdin);
             buf[strcspn(buf,"\n")] = '\0';
-            salvar_asm(buf, &cpu);
+            salvar_asm(buf,cpu.memoria_de_instrucao);
             
             break;
         }
@@ -156,14 +174,12 @@ void carregar_menu_principal()
             setbuf(stdin,NULL);
             fgets(buf,127,stdin);
             buf[strcspn(buf,"\n")] = '\0';
-            salvar_dat(buf, &cpu);
+            salvar_dat(buf,cpu.memoria_de_dados);
 
             break;
         }
         case EXECUTAR_PROGRAMA:
-            while (cpu.pc < 128) {
-                avancar_cpu(&cpu, &pilha_back, opcao_visualizacao_debug);
-            }
+            executar_cpu(&cpu);
             break;
         case EXECUTA_INSTRUCAO:
             avancar_cpu(&cpu, &pilha_back, opcao_visualizacao_debug);
@@ -180,7 +196,7 @@ void carregar_menu_principal()
             opcao_visualizacao_debug = alterar_exibicao_do_debug();
             printf("mini-mips-info: Visualização do debug alterada para %s.\n", opcao_visualizacao_debug == 0 ? "Decimal" : opcao_visualizacao_debug == 1 ? "Hexadecimal" : "Binário");
             break;
-        case MOSTRAR_ESTATISTICAS:{
+        case MOSTRAR_ESTATISTICAS:
             int sub_aux = 0;
             est:
             limparTela();
@@ -192,11 +208,11 @@ void carregar_menu_principal()
             scanf("%d",&sub_aux);
 
             if(sub_aux == 1){
-                mostrar_estatisticas(&cpu);
+                mostrar_estatisticas();
             }
             else if(sub_aux == 2){
     
-                reset_estatisticas(&cpu);
+                reset_estatisticas();
                 puts("mini-mips: as estatísticas foram resetadas com sucesso!");
             }
             else if(sub_aux == 0){
@@ -208,56 +224,6 @@ void carregar_menu_principal()
             }
 
 
-            break;
-        }
-        case ASSEMBLER:
-            printf("====================ASSEMBLER====================\n");
-            printf("PARA VOLTAR, DIGITE $VOLTAR.\n");
-            // Iniciando buffers com a posição 0:
-            char arq_input[30] = {0};
-            char arq_output[30] = {0};
-
-
-            // Input do arquivo de entrada 1
-            printf("Informe o arquivo de entrada (.asm):");
-            setbuf(stdin,NULL);
-            fgets(arq_input,29,stdin);
-            arq_input[strcspn(arq_input,"\n")] = '\0';
-            trim_str(arq_input);
-
-            // se o usuário digitar voltar, volta para o menu principal, usando a label end_asm;
-            if(strcmp(arq_input,"$voltar")==0){goto end_asm;}
-            if(fopen(arq_input,"r") == NULL){printf("mini-mips-err: O arquivo de input não existe!\n");goto end_asm;}
-        
-
-            // Input do arquivo de saída
-            printf("Informe o arquivo de saída (.bin ou .mem):");
-            setbuf(stdin,NULL);
-            fgets(arq_output,29,stdin);
-            arq_output[strcspn(arq_output,"\n")] = '\0';
-            trim_str(arq_output); 
-
-            if(strcmp(arq_output,"$voltar")==0){goto end_asm;}
-                // Carrega o arquivo .asm, redirecionando seu endereço para o ponteiro FILE* input_file;
-                carregar_arq_asm(arq_input);
-                // Carrega o arquivo .asm, redirecionando seu endereço para o ponteiro FILE* output_file;
-                exportar_asm_bin(arq_output);
-                // Realiza o processamento de parsing para assembler.
-                processar_asm();
-            end_asm:
-
-            break;
-        case EXECUTA_INSTRUCAO_CICLOS:
-            int ciclos;
-            printf("Digite o número N de ciclos a executar: ");
-            scanf("%d", &ciclos);
-            for (int i = 0; i < ciclos; i++) {
-                if (cpu.pc >= 128) {
-                    puts("mini-mips-info: Fim do programa alcançado.");
-                    break;
-                }
-                avancar_cpu(&cpu, &pilha_back, opcao_visualizacao_debug);
-            }
             break;
         case FECHAR:
             puts("mini-mips-info: Encerrando programa!");
@@ -341,12 +307,10 @@ static void imprimir_menu(int debug_ativo, int modo_view) {
     printf("\n| EXECUCAO     | 8. Run (Completo)                                     |");
     printf("\n|              | 9. Step (Proxima Instrucao)                           |");
     printf("\n|              | 10. Back (Voltar Instrucao)                           |");
-    printf("\n|              | 15. Executar N Ciclos                                 |");
     printf("\n+--------------+-------------------------------------------------------+");
     printf("\n| SISTEMA      | 11. Debug: [%-3s]                                      |", status_dbg);
     printf("\n|              | 12. Alterar Visualizacao (Hex, Bin, Dec)              |");
     printf("\n|              | 13. Estatísticas                                      |");
-    printf("\n|              | 14. Modo Assembler                                    |");
     printf("\n|              | 0.  Sair                                              |");
     printf("\n+--------------+-------------------------------------------------------+\n");
 }

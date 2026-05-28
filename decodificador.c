@@ -68,21 +68,21 @@ static TipoInstrucao determinar_tipo_instrucao(uint8_t opcode)
 {
     
     if (opcode == OPCODE_R){
-        // dados.total_instrucoes++;
-        // dados.total_tipo_r++;
+        dados.total_instrucoes++;
+        dados.total_tipo_r++;
         return TIPO_R;
     }
         
     else if (opcode == OPCODE_J){
-        // dados.total_instrucoes++;
-        // dados.total_tipo_j++;
+        dados.total_instrucoes++;
+        dados.total_tipo_j++;
         return TIPO_J;
     }
         
 
     else if (opcode == OPCODE_ADDI || opcode == OPCODE_LW || opcode == OPCODE_SW || opcode == OPCODE_BEQ){
-        // dados.total_instrucoes++;
-        // dados.total_tipo_i++;
+        dados.total_instrucoes++;
+        dados.total_tipo_i++;
         return TIPO_I;
     }
         
