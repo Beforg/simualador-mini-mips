@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "utils.h"
+#include "estatisticas.h"
 
 
 void print_int_4bits(int int_generico){
@@ -103,7 +104,6 @@ int arquivo_vazio(const char *filename) {
 void push_cpu(PilhaCPU *p, const CPU *cpu) {
     No *novo = (No*) malloc(sizeof(No));
     if (novo == NULL) return; // Erro de memória
-
     novo->estado = *cpu; // Cópia completa da struct CPU
     novo->proximo = p->topo;
     p->topo = novo;

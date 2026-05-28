@@ -1,7 +1,10 @@
-addi $r1,$r1,10
-beq $r1,$r2,5
-addi $r0,$r0,2
-addi $r2,$r2,1
-sw $r0,0($r4)
-addi $r4,$r4,1
+addi $r0,$r0,31
+add $r0,$r0,$r0
+add $r0,$r0,$r0
+addi $r2,$r2,-31
+addi $r1,$r1,5
+sw $r2,4($r0)
+lw $r1,4($r0)
+beq $r1,$r2,2
 j 1
+add $r0,$r1,$r2
