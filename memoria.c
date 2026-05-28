@@ -10,12 +10,14 @@
 #pragma region MEMORIA
 
 uint16_t ler_end_mem(const CPU *p,uint16_t addr){
-    return p->memoria[addr];
+    return p->memoria_principal[addr];
 }
 void escrever_end_mem(CPU *p,uint16_t addr,int8_t valor, SinaisDeControle sinais_de_controle){ 
     uint16_t valor_uint16 = (uint16_t) valor; // Converte o valor para uint16_t
     if(sinais_de_controle.escrever_memoria == 0) return;
-    p->memoria[128 + addr] = valor_uint16;
+    // FIX: Remover o deslocamento de 128 bits, para ficar fiel na arquitetura
+    // p->memoria_principal[128 + addr] = valor_uint16;
+    p->memoria_principal[addr] = valor_uint16;
     printf("mini-mips: O endereço de memória [%u] tem um novo valor: %d\n",addr,valor);
 }
 
@@ -59,19 +61,19 @@ int8_t ler_registrador(const CPU *p, uint8_t id){
 
 void imprimirMemoria(const CPU *p, TipoMemoria tipo, OpcaoBase base) {
      if (tipo == INSTRUCAO) {
-        puts("\n=================== MEMÓRIA DE PROGRAMA ===================");
+        puts("\n=================== MEMÓRIA ===================");
         for (int i = 0; i < 256; i++) {
             if (i <= 127 ) {
                             printf("%3d: ", i);
-            if (base == HEXADECIMAL) int16_hexa(p->memoria[i]);
-            else if (base == BINARIO) int16_para_binario(p->memoria[i]);
-            else printf("%d", p->memoria[i]);
+            if (base == HEXADECIMAL) int16_hexa(p->memoria_principal[i]);
+            else if (base == BINARIO) int16_para_binario(p->memoria_principal[i]);
+            else printf("%d", p->memoria_principal[i]);
             printf(i % 4 == 3 ? "\n" : " | ");
             } else {
                 printf("%u: ", i);
-                if (base == HEXADECIMAL) int16_hexa(p->memoria[i]);
-                else if (base == BINARIO) int16_para_binario(p->memoria[i]);
-                else printf("%d", (int8_t)p->memoria[i]);
+                if (base == HEXADECIMAL) int16_hexa(p->memoria_principal[i]);
+                else if (base == BINARIO) int16_para_binario(p->memoria_principal[i]);
+                else printf("%d", (int8_t)p->memoria_principal[i]);
                 printf(i % 4 == 3 ? "\n" : " | ");
             }
         }
@@ -96,13 +98,13 @@ void imprimirMemoria(const CPU *p, TipoMemoria tipo, OpcaoBase base) {
 void resetarMemoria(CPU *p, TipoMemoria tipo){
      if(tipo == DADOS){
         for(int i = 0; i < 256;i++){
-            p->memoria[i] = 0;
+            p->memoria_principal[i] = 0;
         }
         return;
     }
     else if(tipo == INSTRUCAO){
         for(int i = 0; i < 256;i++){
-            p->memoria[i] = 0;
+            p->memoria_principal[i] = 0;
         }
         return;
     }

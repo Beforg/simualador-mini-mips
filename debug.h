@@ -29,7 +29,9 @@ void debug_geral(
     const SinaisDeControle sinais,
     const ResultadoUla ula,
     const CPU *cpu,
-    int opcao);
+    EstadosControle proximo_estado,
+    int opcao,
+    const InstrucaoDecodificada instrucao_buscada);
     // opcao: 0 = Decimal, 1 = Hexa, 2 = Binario
 
 // Funcões de print de inteiros <stdint.h> para binário e hexadecimal
