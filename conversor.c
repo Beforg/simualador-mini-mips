@@ -40,16 +40,16 @@ void converter_para_asm(InstrucaoDecodificada instr, char *retorno) {
             }
             break;
         }    
-        case TIPO_INVALIDO:{
+        case NOP:{
             // Zerando as strings.
-            retorno[0] = '\0';
-            puts("mini-mips-err: Tipo inválido para conversão");
+            strcpy(retorno, "NOP");
+            //puts("mini-mips-err: Tipo inválido para conversão");
             break;
         }    
         default:{
             // Zerando as strings.
-            retorno[0] = '\0';
-            puts("mini-mips-err: Erro de tipagem no decodificador.");
+            strcpy(retorno, "NOP");
+            //puts("mini-mips-err: Erro de tipagem no decodificador.");
             break;
         }    
     }
