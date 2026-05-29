@@ -120,7 +120,7 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 
 	// acesso a memoria | TODO: (RETIRAR SINBAIS DE CONTROLE DPS)
 	escrever_end_mem_dados(cpu, cpu->ex_mem.ula_saida, cpu->ex_mem.b, sinais_de_controle);
-	valor_write_back = mux_write_back(cpu);
+	//valor_write_back = mux_write_back(cpu);
 	valor_memoria = ler_end_mem_dados(cpu, (uint8_t)(cpu->ex_mem.ula_saida));
 
 	
