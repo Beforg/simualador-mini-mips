@@ -383,7 +383,7 @@ static void debug_pipeline_snapshot(const CPU *cpu, int opcao, const char *titul
 
     
 
-    printf("\n\nDI/EX Sinais: EX[ALU=");
+    printf("\nDI/EX Sinais: EX[ALU=");
     if (opcao == 1)
         int8_hexa(cpu->di_ex.ex_sinais.controle_ula);
     else if (opcao == 2)
