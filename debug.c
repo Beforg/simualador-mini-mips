@@ -293,9 +293,12 @@ void debug_geral(const InstrucaoDecodificada inst,
 static void debug_pipeline_snapshot(const CPU *cpu, int opcao, const char *titulo)
 {
     printf("\n-- %s --\n", titulo);
-
+    printf("ESTAGIO BI/DI: %s", cpu->bi_di.instrucao_asm[0] != '\0' ? cpu->bi_di.instrucao_asm : "add $r0,$r0,$r0");
+    printf("\nESTAGIO DI/EX: %s", cpu->di_ex.instrucao_asm[0] != '\0' ? cpu->di_ex.instrucao_asm : "add $r0,$r0,$r0");
+    printf("\nESTAGIO EX/MEM: %s", cpu->ex_mem.instrucao_asm[0] != '\0' ? cpu->ex_mem.instrucao_asm : "add $r0,$r0,$r0");
+    printf("\nESTAGIO MEM/WB: %s", cpu->mem_wb.instrucao_asm[0] != '\0' ? cpu->mem_wb.instrucao_asm : "add $r0,$r0,$r0");
     // BI/DI
-    printf("BI/DI: PC+1=");
+    printf("\n\nBI/DI: PC+1=");
     if (opcao == 1)
         int8_hexa(cpu->bi_di.pc_mais_um);
     else if (opcao == 2)
@@ -311,8 +314,10 @@ static void debug_pipeline_snapshot(const CPU *cpu, int opcao, const char *titul
     else
         printf("%u", cpu->bi_di.ri);
 
+    
+
     // DI/EX
-    printf("\nDI/EX: OPC=");
+    printf("\n\nDI/EX: OPC=");
     if (opcao == 1)
         int8_hexa(cpu->di_ex.opcode);
     else if (opcao == 2)
@@ -376,7 +381,9 @@ static void debug_pipeline_snapshot(const CPU *cpu, int opcao, const char *titul
     else
         printf("%u", cpu->di_ex.rt);
 
-    printf("\nDI/EX Sinais: EX[ALU=");
+    
+
+    printf("\n\nDI/EX Sinais: EX[ALU=");
     if (opcao == 1)
         int8_hexa(cpu->di_ex.ex_sinais.controle_ula);
     else if (opcao == 2)
@@ -394,7 +401,7 @@ static void debug_pipeline_snapshot(const CPU *cpu, int opcao, const char *titul
            cpu->di_ex.er.escrever_reg);
 
     // EX/MEM
-    printf("\nEX/MEM: OPC=");
+    printf("\n\nEX/MEM: OPC=");
     if (opcao == 1)
         int8_hexa(cpu->ex_mem.opcode);
     else if (opcao == 2)
@@ -426,7 +433,9 @@ static void debug_pipeline_snapshot(const CPU *cpu, int opcao, const char *titul
     else
         printf("%u", cpu->ex_mem.reg_destino);
 
-    printf(" | MEM[W=%u J=%u B=%u] WB[M2R=%u WR=%u]",
+    
+
+    printf("| MEM[W=%u J=%u B=%u] WB[M2R=%u WR=%u]\n",
            cpu->ex_mem.mem_sinais.escrever_memoria,
            cpu->ex_mem.mem_sinais.jump,
            cpu->ex_mem.mem_sinais.branch,
@@ -465,10 +474,12 @@ static void debug_pipeline_snapshot(const CPU *cpu, int opcao, const char *titul
         print_int_3bits(cpu->mem_wb.reg_destino);
     else
         printf("%u", cpu->mem_wb.reg_destino);
-
-    printf(" | WB[M2R=%u WR=%u]",
-           cpu->mem_wb.er.memoria_para_reg,
-           cpu->mem_wb.er.escrever_reg);
+        printf("| MEM[W=%u J=%u B=%u] WB[M2R=%u WR=%u]\n",
+            cpu->mem_wb.mem_sinais.escrever_memoria,
+            cpu->mem_wb.mem_sinais.jump,
+            cpu->mem_wb.mem_sinais.branch,
+            cpu->mem_wb.er.memoria_para_reg,
+            cpu->mem_wb.er.escrever_reg);
 
 }
 

@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define INSTRUCAO_ASM_TAM 64
+
 //novas estruturas:
 
 typedef struct {
@@ -25,6 +27,7 @@ typedef struct {
 typedef struct {
   uint8_t pc_mais_um;
   uint16_t ri;
+  char instrucao_asm[INSTRUCAO_ASM_TAM];
 } BI_DI;
 
 typedef struct {
@@ -43,7 +46,7 @@ typedef struct {
   uint8_t rd;
   uint8_t rt;
   uint8_t rs;
-  
+  char instrucao_asm[INSTRUCAO_ASM_TAM];
 } DI_EX;
 
 typedef struct {
@@ -53,21 +56,24 @@ typedef struct {
   int8_t ula_saida;
   int8_t b;
   uint8_t reg_destino; // rt ou rd
+  char instrucao_asm[INSTRUCAO_ASM_TAM];
 } EX_MEM;
 
 typedef struct {
   ErSinais er;
+  MemSinais mem_sinais;
   uint8_t opcode;
   int8_t memoria_saida;
   int8_t ula_saida;
   uint8_t reg_destino; // rt ou rd
+  char instrucao_asm[INSTRUCAO_ASM_TAM];
 } MEM_WB;
 
 typedef enum {
   TIPO_R,
   TIPO_I,
   TIPO_J,
-  TIPO_INVALIDO
+  NOP
 } TipoInstrucao;
 
 typedef enum {

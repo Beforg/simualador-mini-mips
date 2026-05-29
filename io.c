@@ -10,12 +10,13 @@
 /* Auxiliares de Leitura */
 // static void verificar_erro_ao_abrir_arquivo(FILE *file);
 static void ler_arquivo_de_instrucoes(FILE *file, uint16_t *memoria_de_instrucoes);
-static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao);
+static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao, int *map_orig_to_new, int indice_original);
 static void salvar_txt_logisim(FILE *file);
 /* Auxiliares menu */
 static void exibir_opcoes_do_menu();
 static int validar_opcao_escolhida(int opcao);
 static void inserir_nop(uint16_t *memoria_de_instrucoes, int *posicao);
+static void ajustar_enderecos_desvios(uint16_t *memoria_de_instrucoes, const uint16_t *originais, const int *map_orig_to_new, int total_originais);
 
 /* *
  * 
@@ -48,13 +49,27 @@ void carregar_instrucoes(const char* nome_arquivo, uint16_t *memoria_de_instruco
 
 static void ler_arquivo_de_instrucoes(FILE *file, uint16_t *memoria_de_instrucoes) {
 	char linha[TAMANHO_LINHA];
+    uint16_t originais[MAX_INSTRUCOES] = {0};
+    int map_orig_to_new[MAX_INSTRUCOES] = {0};
     int posicao_atual_memoria_de_instrucoes = 0; // índice da memória
+    int total_originais = 0;
     
     while (fgets(linha, sizeof(linha), file) != NULL && posicao_atual_memoria_de_instrucoes < MAX_INSTRUCOES) {
         
         linha[strcspn(linha, "\n")] = '\0';
-        inserir_na_memoria_de_instrucoes(linha, memoria_de_instrucoes, &posicao_atual_memoria_de_instrucoes);
+		if (strlen(linha) == 0) {
+			continue;
+		}
+		if (total_originais >= MAX_INSTRUCOES) {
+			puts("mini-mips-warn: Limite maximo de instrucoes originais atingido.");
+			break;
+		}
+		originais[total_originais] = binario_para_int16_sem_sinal(linha);
+        inserir_na_memoria_de_instrucoes(linha, memoria_de_instrucoes, &posicao_atual_memoria_de_instrucoes, map_orig_to_new, total_originais);
+		total_originais++;
 	}
+
+    ajustar_enderecos_desvios(memoria_de_instrucoes, originais, map_orig_to_new, total_originais);
 
     salvar_txt_logisim(file);
     fclose(file);
@@ -115,9 +130,10 @@ static void salvar_txt_logisim(FILE *file) {
     puts("mini-mips-info: Arquivo logisim_output.txt gerado com sucesso.");
 }
 
-static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao) {
+static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao, int *map_orig_to_new, int indice_original) {
      if (strlen(linha) > 0) {
          uint16_t instrucao_lida = binario_para_int16_sem_sinal(linha);
+            map_orig_to_new[indice_original] = *posicao;
          memoria_de_instrucoes[*posicao] = instrucao_lida;
          uint8_t opcode = (instrucao_lida >> 12) & 0xF; // Extrai os 4 bits mais significativos
          printf("Carregado na posicao [%d]: %s (0x%04X)\n", *posicao, linha, memoria_de_instrucoes[*posicao]);
@@ -127,6 +143,8 @@ static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t
          } else if (opcode == OPCODE_BEQ) {
             inserir_nop(memoria_de_instrucoes, posicao);
             inserir_nop(memoria_de_instrucoes, posicao);
+            } else if (opcode == OPCODE_LW) {
+                inserir_nop(memoria_de_instrucoes, posicao);
          }
      }
 }
@@ -138,6 +156,40 @@ static void inserir_nop(uint16_t *memoria_de_instrucoes, int *posicao) {
         (*posicao)++;
     } else {
         puts("mini-mips-err: Memória de instruções cheia, não é possível inserir NOP.");
+    }
+}
+
+static void ajustar_enderecos_desvios(uint16_t *memoria_de_instrucoes, const uint16_t *originais, const int *map_orig_to_new, int total_originais) {
+    for (int i = 0; i < total_originais; i++) {
+        uint16_t instrucao = originais[i];
+        uint8_t opcode = (uint8_t)((instrucao >> 12) & 0x0F);
+        int posicao_nova = map_orig_to_new[i];
+
+        if (opcode == OPCODE_J) {
+            uint8_t destino_original = (uint8_t)(instrucao & 0xFF);
+            if (destino_original >= (uint8_t)total_originais) {
+                continue;
+            }
+            uint8_t destino_novo = (uint8_t)map_orig_to_new[destino_original];
+            memoria_de_instrucoes[posicao_nova] = (uint16_t)((instrucao & 0xFF00) | destino_novo);
+            continue;
+        }
+
+        if (opcode == OPCODE_BEQ) {
+            int8_t offset_original = extender_sinal(instrucao);
+            int alvo_original = i + 1 + offset_original;
+            if (alvo_original < 0 || alvo_original >= total_originais) {
+                continue;
+            }
+            int pc_mais_um_novo = map_orig_to_new[i] + 1;
+            int alvo_novo = map_orig_to_new[alvo_original];
+            int offset_novo = alvo_novo - pc_mais_um_novo;
+            if (offset_novo < -32 || offset_novo > 31) {
+                printf("mini-mips-warn: Offset de branch fora do intervalo em %d.\n", i);
+                continue;
+            }
+            memoria_de_instrucoes[posicao_nova] = (uint16_t)((instrucao & 0xFFC0) | ((uint16_t)offset_novo & 0x3F));
+        }
     }
 }
 

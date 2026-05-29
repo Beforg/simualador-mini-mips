@@ -59,7 +59,8 @@ static void decodificar(InstrucaoDecodificada *instr_decodificada, TipoInstrucao
         decodificar_tipo_j(instr_decodificada, instrucao, tipo_instrucao);
         break;
     default:
-        instr_decodificada->tipo = TIPO_INVALIDO;
+        instr_decodificada->tipo = NOP;
+        instr_decodificada->opcode = obter_opcode(instrucao);
         break;
     }
 }
@@ -88,7 +89,7 @@ static TipoInstrucao determinar_tipo_instrucao(uint8_t opcode)
         
 
     else
-        return TIPO_INVALIDO;
+        return NOP;
 }
 
 /**

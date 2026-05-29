@@ -8,7 +8,6 @@
 
 int8_t ler_end_mem_dados(const CPU *p,uint16_t addr){
     if (addr >= 256 || addr < 0) {
-        printf("mini-mips-err: Tentativa de acesso a endereço de dados inválido: %u\n", addr);
         return 0; // Retorna 0 ou algum valor padrão para indicar erro
     }
     return p->memoria_de_dados[addr];
