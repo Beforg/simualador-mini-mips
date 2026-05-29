@@ -16,6 +16,7 @@ static void gerar(SinaisDeControle *sinais_de_controle, uint8_t opcode, uint8_t 
 
 SinaisDeControle gerar_sinais_de_controle(uint8_t opcode, uint8_t funct) {
     SinaisDeControle sinais_de_controle = {0}; // Zera tudo
+    if (opcode == 1) return sinais_de_controle;
     gerar(&sinais_de_controle, opcode, funct);
     return sinais_de_controle;
 }

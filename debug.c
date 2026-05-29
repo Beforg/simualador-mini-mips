@@ -86,11 +86,11 @@ void estado_atual_cpu(const CPU *cpu, int opcao)
     {
         printf("\n║  PC: %u (", cpu->pc);
         int8_para_binario(cpu->pc);
-        printf(")  │  Instrução: ");
+        printf(")  │  Instr. Apontada: ");
     }
     else
     {
-        printf("\n║  PC: %u  │  Instrução: ", cpu->pc);
+        printf("\n║  PC: %u  │  Instr. Apontada: ", cpu->pc);
     }
     if (opcao == 1)
     {
@@ -161,7 +161,7 @@ void debug_geral(const InstrucaoDecodificada inst,
     }
 
     printf("\n============ DEBUG CPU =====================\n");
-
+    
     // 1. PC e Instrução (16 bits)
     printf("PC Atualizado: ");
     if (opcao == 1)
@@ -287,6 +287,201 @@ void debug_geral(const InstrucaoDecodificada inst,
     // imprimirMemoria((CPU*)cpu, REGISTRADOR, opcao);
     // imprimirMemoria((CPU*)cpu, DADOS, opcao);
 
+    printf("\n================================================\n");
+}
+
+static void debug_pipeline_snapshot(const CPU *cpu, int opcao, const char *titulo)
+{
+    printf("\n-- %s --\n", titulo);
+
+    // BI/DI
+    printf("BI/DI: PC+1=");
+    if (opcao == 1)
+        int8_hexa(cpu->bi_di.pc_mais_um);
+    else if (opcao == 2)
+        int8_para_binario(cpu->bi_di.pc_mais_um);
+    else
+        printf("%u", cpu->bi_di.pc_mais_um);
+
+    printf(" | RI=");
+    if (opcao == 1)
+        int16_hexa(cpu->bi_di.ri);
+    else if (opcao == 2)
+        int16_para_binario(cpu->bi_di.ri);
+    else
+        printf("%u", cpu->bi_di.ri);
+
+    // DI/EX
+    printf("\nDI/EX: OPC=");
+    if (opcao == 1)
+        int8_hexa(cpu->di_ex.opcode);
+    else if (opcao == 2)
+        print_int_4bits(cpu->di_ex.opcode);
+    else
+        printf("%u", cpu->di_ex.opcode);
+
+    printf(" | A=");
+    if (opcao == 1)
+        int8_hexa(cpu->di_ex.a);
+    else if (opcao == 2)
+        int8_para_binario(cpu->di_ex.a);
+    else
+        printf("%d", cpu->di_ex.a);
+
+    printf(" | B=");
+    if (opcao == 1)
+        int8_hexa(cpu->di_ex.b);
+    else if (opcao == 2)
+        int8_para_binario(cpu->di_ex.b);
+    else
+        printf("%d", cpu->di_ex.b);
+
+    printf(" | IMM=");
+    if (opcao == 1)
+        int8_hexa(cpu->di_ex.imediato);
+    else if (opcao == 2)
+        int8_para_binario(cpu->di_ex.imediato);
+    else
+        printf("%d", cpu->di_ex.imediato);
+
+    printf(" | PC+1=");
+    if (opcao == 1)
+        int8_hexa(cpu->di_ex.pc_mais_um);
+    else if (opcao == 2)
+        int8_para_binario(cpu->di_ex.pc_mais_um);
+    else
+        printf("%u", cpu->di_ex.pc_mais_um);
+
+    printf(" | RS=");
+    if (opcao == 1)
+        int8_hexa(cpu->di_ex.rs);
+    else if (opcao == 2)
+        print_int_3bits(cpu->di_ex.rs);
+    else
+        printf("%u", cpu->di_ex.rs);
+
+    printf(" | RD=");
+    if (opcao == 1)
+        int8_hexa(cpu->di_ex.rd);
+    else if (opcao == 2)
+        print_int_3bits(cpu->di_ex.rd);
+    else
+        printf("%u", cpu->di_ex.rd);
+
+    printf(" | RT=");
+    if (opcao == 1)
+        int8_hexa(cpu->di_ex.rt);
+    else if (opcao == 2)
+        print_int_3bits(cpu->di_ex.rt);
+    else
+        printf("%u", cpu->di_ex.rt);
+
+    printf("\nDI/EX Sinais: EX[ALU=");
+    if (opcao == 1)
+        int8_hexa(cpu->di_ex.ex_sinais.controle_ula);
+    else if (opcao == 2)
+        print_int_3bits(cpu->di_ex.ex_sinais.controle_ula);
+    else
+        printf("%u", cpu->di_ex.ex_sinais.controle_ula);
+
+    printf(" SRC=%u RDST=%u] MEM[W=%u J=%u B=%u] WB[M2R=%u WR=%u]",
+           cpu->di_ex.ex_sinais.ula_fonte,
+           cpu->di_ex.ex_sinais.reg_destino,
+           cpu->di_ex.mem_sinais.escrever_memoria,
+           cpu->di_ex.mem_sinais.jump,
+           cpu->di_ex.mem_sinais.branch,
+           cpu->di_ex.er.memoria_para_reg,
+           cpu->di_ex.er.escrever_reg);
+
+    // EX/MEM
+    printf("\nEX/MEM: OPC=");
+    if (opcao == 1)
+        int8_hexa(cpu->ex_mem.opcode);
+    else if (opcao == 2)
+        print_int_4bits(cpu->ex_mem.opcode);
+    else
+        printf("%u", cpu->ex_mem.opcode);
+
+    printf(" | ULA=");
+    if (opcao == 1)
+        int8_hexa(cpu->ex_mem.ula_saida);
+    else if (opcao == 2)
+        int8_para_binario(cpu->ex_mem.ula_saida);
+    else
+        printf("%d", cpu->ex_mem.ula_saida);
+
+    printf(" | B=");
+    if (opcao == 1)
+        int8_hexa(cpu->ex_mem.b);
+    else if (opcao == 2)
+        int8_para_binario(cpu->ex_mem.b);
+    else
+        printf("%d", cpu->ex_mem.b);
+
+    printf(" | RDST=");
+    if (opcao == 1)
+        int8_hexa(cpu->ex_mem.reg_destino);
+    else if (opcao == 2)
+        print_int_3bits(cpu->ex_mem.reg_destino);
+    else
+        printf("%u", cpu->ex_mem.reg_destino);
+
+    printf(" | MEM[W=%u J=%u B=%u] WB[M2R=%u WR=%u]",
+           cpu->ex_mem.mem_sinais.escrever_memoria,
+           cpu->ex_mem.mem_sinais.jump,
+           cpu->ex_mem.mem_sinais.branch,
+           cpu->ex_mem.er.memoria_para_reg,
+           cpu->ex_mem.er.escrever_reg);
+
+    // MEM/WB
+    printf("\nMEM/WB: OPC=");
+    if (opcao == 1)
+        int8_hexa(cpu->mem_wb.opcode);
+    else if (opcao == 2)
+        print_int_4bits(cpu->mem_wb.opcode);
+    else
+        printf("%u", cpu->mem_wb.opcode);
+
+    printf(" | MEM=");
+    if (opcao == 1)
+        int8_hexa(cpu->mem_wb.memoria_saida);
+    else if (opcao == 2)
+        int8_para_binario(cpu->mem_wb.memoria_saida);
+    else
+        printf("%d", cpu->mem_wb.memoria_saida);
+
+    printf(" | ULA=");
+    if (opcao == 1)
+        int8_hexa(cpu->mem_wb.ula_saida);
+    else if (opcao == 2)
+        int8_para_binario(cpu->mem_wb.ula_saida);
+    else
+        printf("%d", cpu->mem_wb.ula_saida);
+
+    printf(" | RDST=");
+    if (opcao == 1)
+        int8_hexa(cpu->mem_wb.reg_destino);
+    else if (opcao == 2)
+        print_int_3bits(cpu->mem_wb.reg_destino);
+    else
+        printf("%u", cpu->mem_wb.reg_destino);
+
+    printf(" | WB[M2R=%u WR=%u]",
+           cpu->mem_wb.er.memoria_para_reg,
+           cpu->mem_wb.er.escrever_reg);
+
+}
+
+void debug_pipeline(const CPU *cpu_antes, const CPU *cpu_depois, int opcao)
+{
+    if (!debugAtivado)
+    {
+        return;
+    }
+
+    printf("\n============ DEBUG PIPELINE =====================\n");
+    debug_pipeline_snapshot(cpu_antes, opcao, "ANTES");
+    debug_pipeline_snapshot(cpu_depois, opcao, "DEPOIS");
     printf("\n================================================\n");
 }
 

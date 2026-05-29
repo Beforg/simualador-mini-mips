@@ -42,6 +42,7 @@ typedef struct {
   uint8_t pc_mais_um;
   uint8_t rd;
   uint8_t rt;
+  uint8_t rs;
   
 } DI_EX;
 

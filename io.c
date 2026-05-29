@@ -15,6 +15,7 @@ static void salvar_txt_logisim(FILE *file);
 /* Auxiliares menu */
 static void exibir_opcoes_do_menu();
 static int validar_opcao_escolhida(int opcao);
+static void inserir_nop(uint16_t *memoria_de_instrucoes, int *posicao);
 
 /* *
  * 
@@ -116,10 +117,28 @@ static void salvar_txt_logisim(FILE *file) {
 
 static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao) {
      if (strlen(linha) > 0) {
-         memoria_de_instrucoes[*posicao] = binario_para_int16_sem_sinal(linha);
+         uint16_t instrucao_lida = binario_para_int16_sem_sinal(linha);
+         memoria_de_instrucoes[*posicao] = instrucao_lida;
+         uint8_t opcode = (instrucao_lida >> 12) & 0xF; // Extrai os 4 bits mais significativos
          printf("Carregado na posicao [%d]: %s (0x%04X)\n", *posicao, linha, memoria_de_instrucoes[*posicao]);
          (*posicao)++;
+         if (opcode == OPCODE_J) {
+            inserir_nop(memoria_de_instrucoes, posicao);
+         } else if (opcode == OPCODE_BEQ) {
+            inserir_nop(memoria_de_instrucoes, posicao);
+            inserir_nop(memoria_de_instrucoes, posicao);
+         }
      }
+}
+
+static void inserir_nop(uint16_t *memoria_de_instrucoes, int *posicao) {
+    if (*posicao < MAX_INSTRUCOES) {
+        memoria_de_instrucoes[*posicao] = 0b0001000000000000; // NOP é representado por 0
+        printf("Inserido NOP na posicao [%d]\n", *posicao);
+        (*posicao)++;
+    } else {
+        puts("mini-mips-err: Memória de instruções cheia, não é possível inserir NOP.");
+    }
 }
 
 /* *

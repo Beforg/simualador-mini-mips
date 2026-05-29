@@ -32,6 +32,9 @@ void debug_geral(
     int opcao);
     // opcao: 0 = Decimal, 1 = Hexa, 2 = Binario
 
+// Debug do pipeline por estagio (BI/DI, DI/EX, EX/MEM, MEM/WB)
+void debug_pipeline(const CPU *cpu_antes, const CPU *cpu_depois, int opcao);
+
 // Funcões de print de inteiros <stdint.h> para binário e hexadecimal
 
 void debug_binario();
