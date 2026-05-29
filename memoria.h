@@ -32,14 +32,20 @@ typedef enum {
 // 3) Procurar valor e retornar **INTEIRO COM SINAL**
 
 
+#pragma region MEMORIA_DADOS
+
+int8_t ler_end_mem_dados(const CPU *p,uint16_t addr);                     // Retonar o valor daquele endereço
+void escrever_end_mem_dados(CPU *p,uint8_t addr,int8_t valor, SinaisDeControle sinais_de_controle);     // Escreve o valor no endereço                                                                       
+                      
+#pragma endregion MEMORIA_DADOS
 
 
-#pragma region MEMORIA
+#pragma region MEMORIA_INSTRUCAO
 
-uint16_t ler_end_mem(const CPU *p,uint16_t addr); 
-void escrever_end_mem(CPU *p,uint16_t addr,int8_t valor, SinaisDeControle sinais_de_controle); 
+uint16_t ler_end_mem_instrucao(const CPU *p,uint16_t addr); 
+void escrever_end_mem_instrucao(CPU *p,uint16_t addr,uint16_t valor); 
 
-#pragma endregion MEMORIA
+#pragma endregion MEMORIA_INSTRUCAO
 
 #pragma region REGISTRADORES
 

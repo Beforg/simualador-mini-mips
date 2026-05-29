@@ -1,79 +1,74 @@
-
 #ifndef TYPES_H
 #define TYPES_H
 
 #include <stdint.h>
 
-typedef struct Estatisticas {
-  int total_instrucoes;
-  int total_instrucoes_executadas;
-  int total_tipo_j;
-  int total_tipo_i;
-  int total_tipo_r;
+//novas estruturas:
 
-  int total_tipo_j_executadas;
-  int total_tipo_i_executadas;
-  int total_tipo_r_executadas;
+typedef struct {
+  uint8_t memoria_para_reg;
+  uint8_t escrever_reg;
+} ErSinais;
 
-  int total_ciclos;
-  // Vamos guardar o total de ciclos para cada instrucao separadamente.
-  int total_ciclos_add;
-  int total_ciclos_sub;
-  int total_ciclos_or;
-  int total_ciclos_and;
-  int total_ciclos_addi;
-  int total_ciclos_lw;
-  int total_ciclos_sw;
-  int total_ciclos_beq;
-  int total_ciclos_j;
+typedef struct {
+  uint8_t escrever_memoria;
+  uint8_t jump;
+  uint8_t branch;
+} MemSinais;
 
-  int total_add_executadas;
-  int total_sub_executadas;
-  int total_or_executadas;
-  int total_and_executadas;
-  int total_addi_executadas;
-  int total_lw_executadas;
-  int total_sw_executadas;
-  int total_beq_executadas;
-  int total_j_executadas;
+typedef struct {
+  uint8_t controle_ula;
+  uint8_t ula_fonte;
+  uint8_t reg_destino;
+} ExSinais;
 
-  // Aqui, sao quantas vezes aparecem a instrucao.
-  int total_add;
-  int total_sub;
-  int total_or;
-  int total_and;
-  int total_addi;
-  int total_lw;
-  int total_sw;
-  int total_beq;
-  int total_j;
+typedef struct {
+  uint8_t pc_mais_um;
+  uint16_t ri;
+} BI_DI;
 
-  // Porcentagens
-  float perc_j;
-  float perc_i;
-  float perc_r;
-  float cpi;
-} Estatisticas;
+typedef struct {
+  //registrador ER:
+  ErSinais er;
+  //registrador MEM:
+  MemSinais mem_sinais;
+  //registrador EX:
+  ExSinais ex_sinais;
+
+  uint8_t opcode; 
+  int8_t a;
+  int8_t b;
+  int8_t imediato;
+  uint8_t pc_mais_um;
+  uint8_t rd;
+  uint8_t rt;
+  uint8_t rs;
+  
+} DI_EX;
+
+typedef struct {
+  ErSinais er;
+  MemSinais mem_sinais;
+  uint8_t opcode; 
+  int8_t ula_saida;
+  int8_t b;
+  uint8_t reg_destino; // rt ou rd
+} EX_MEM;
+
+typedef struct {
+  ErSinais er;
+  uint8_t opcode;
+  int8_t memoria_saida;
+  int8_t ula_saida;
+  uint8_t reg_destino; // rt ou rd
+} MEM_WB;
+
 typedef enum {
   TIPO_R,
   TIPO_I,
   TIPO_J,
   TIPO_INVALIDO
 } TipoInstrucao;
-
-typedef enum EstadosControle {
-  IF = 0,
-  ID = 1,
-  EX_MEM_IMM = 2,
-  LW_ACESSO_MEM = 3,
-  MEM_WB = 4,
-  SW_ACESSO_MEM = 5,
-  END_ADDI = 6,
-  EX_TIPO_R = 7,
-  END_TIPO_R = 8,
-  EX_BRANCH = 9,
-  EX_JUMP = 10,
-} EstadosControle;
 
 typedef enum {
   OPCODE_R = 0b0000,
@@ -109,19 +104,17 @@ typedef enum {
 } Funct;
 
 typedef struct {
- uint16_t pc;
- uint16_t ri;
- uint16_t rdm;
- int8_t a;
- int8_t b;
- int8_t saida_ula;
- uint16_t memoria_principal[256]; // netoe1: Uso de apenas uma memória principal.
+ uint8_t pc; // corrigido de 16 para 8
+ uint16_t memoria_de_instrucao[256];
+ int8_t memoria_de_dados[256];
  int8_t banco_de_regs[8];
- EstadosControle estado_atual;
- Estatisticas estatistica; // Ponteiro para módulo de estatística.
+ BI_DI bi_di;
+ DI_EX di_ex;
+ EX_MEM ex_mem;
+ MEM_WB mem_wb;
 } CPU;
 
-typedef struct InstrucaoDecodificada {
+typedef struct {
   TipoInstrucao tipo;
   uint8_t opcode;
   uint8_t rs;
@@ -137,13 +130,9 @@ typedef struct {
   uint8_t escrever_memoria;
   uint8_t escrever_reg;
   uint8_t memoria_para_reg;
-  uint8_t ula_fonte_a;
-  uint8_t ula_fonte_b;
+  uint8_t ula_fonte;
   uint8_t reg_destino;
   uint8_t incremento_pc;
-  uint8_t pc_fonte;
-  uint8_t ir_escrever;
-  uint8_t i_ou_d;
   uint8_t jump;
   uint8_t branch;
 } SinaisDeControle;

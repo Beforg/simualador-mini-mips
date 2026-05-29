@@ -6,20 +6,16 @@
 #include "utils.h"
 #include "conversor.h"
 #include "decodificador.h"
-#include "estatisticas.h"
-# include "types.h"
 
 /* Auxiliares de Leitura */
 // static void verificar_erro_ao_abrir_arquivo(FILE *file);
-//static void ler_arquivo_de_instrucoes(FILE *file, uint16_t *memoria_de_instrucoes);
-//static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao);
+static void ler_arquivo_de_instrucoes(FILE *file, uint16_t *memoria_de_instrucoes);
+static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao);
 static void salvar_txt_logisim(FILE *file);
-static int verificar_cabecalho_arquivo(FILE *file);
 /* Auxiliares menu */
 static void exibir_opcoes_do_menu();
 static int validar_opcao_escolhida(int opcao);
-static void processar_dados_e_instrucoes(FILE *file, CPU *cpu);
-static uint8_t extrair_bits(char *tipo, uint16_t instrucao);
+static void inserir_nop(uint16_t *memoria_de_instrucoes, int *posicao);
 
 /* *
  * 
@@ -27,7 +23,7 @@ static uint8_t extrair_bits(char *tipo, uint16_t instrucao);
  * @params: Nome do arquivo e Memória de Instruções da struct CPU.
  *
  * */
-void carregar_instrucoes_e_dados(const char *nome_arquivo, CPU *cpu) {
+void carregar_instrucoes(const char* nome_arquivo, uint16_t *memoria_de_instrucoes) {
 	FILE *file;
 	file = fopen(nome_arquivo, "r");
 
@@ -37,7 +33,7 @@ void carregar_instrucoes_e_dados(const char *nome_arquivo, CPU *cpu) {
     }
 
     printf("mini-mips-info: Arquivo aberto, iniciando leitura das instruções...\n");
-	processar_dados_e_instrucoes(file, cpu);
+	ler_arquivo_de_instrucoes(file, memoria_de_instrucoes);
 	
 }
 
@@ -50,72 +46,19 @@ void carregar_instrucoes_e_dados(const char *nome_arquivo, CPU *cpu) {
 // }
 
 
-static void processar_dados_e_instrucoes(FILE *file, CPU *cpu) {
-	char linha[64];
-    int modo = MODO_INSTRUCAO;
-    int endereco_atual = 0;
-    int addr_dados_sequencial = 128; 
+static void ler_arquivo_de_instrucoes(FILE *file, uint16_t *memoria_de_instrucoes) {
+	char linha[TAMANHO_LINHA];
+    int posicao_atual_memoria_de_instrucoes = 0; // índice da memória
+    
+    while (fgets(linha, sizeof(linha), file) != NULL && posicao_atual_memoria_de_instrucoes < MAX_INSTRUCOES) {
+        
+        linha[strcspn(linha, "\n")] = '\0';
+        inserir_na_memoria_de_instrucoes(linha, memoria_de_instrucoes, &posicao_atual_memoria_de_instrucoes);
+	}
 
-    while (fgets(linha, sizeof(linha), file) != NULL) {
-        linha[strcspn(linha, "\r\n")] = '\0';
-
-        if (strlen(linha) == 0 || linha[0] == '#') {
-            continue;
-        }
-
-        if (strcmp(linha, ".data") == 0) {
-            modo = MODO_DADOS;
-            printf("  -> Seção .data encontrada. Carregando dados a partir de 128.\n");
-            continue;
-        }
-
-        if (modo == MODO_INSTRUCAO) {
-            if (endereco_atual <= 127) {
-                cpu->memoria_principal[endereco_atual] = binario_para_int16_sem_sinal(linha);
-                uint8_t opcode = extrair_bits("opcode", cpu->memoria_principal[endereco_atual]);
-                uint8_t funct = extrair_bits("funct", cpu->memoria_principal[endereco_atual]);
-                contabilizar_todas_instrucoes(cpu, opcode, funct);
-                printf("    [%.16b] End: %d carregado.\n", cpu->memoria_principal[endereco_atual], endereco_atual);
-                endereco_atual++;
-            } else {
-                puts("mini-mips-warn: Limite de instruções (127) atingido. Verifique o ficheiro .mem");
-            }
-        } 
-        else if (modo == MODO_DADOS) {
-            int addr_lido;
-            char bin_lido[20];
-
-            // Tenta formato "endereco:binario"
-            if (sscanf(linha, "%d:%s", &addr_lido, bin_lido) == 2) {
-                if (addr_lido >= 128 && addr_lido <= 255) {
-                    cpu->memoria_principal[addr_lido] = (int8_t)binario_para_int16_sem_sinal(bin_lido);
-                    printf("    [%d] End: %d carregado.\n",cpu->memoria_principal[addr_lido], addr_lido);
-                } else {
-                    printf("mini-mips-err: Endereço de dado %d fora da faixa permitida [128-255].\n", addr_lido);
-                }
-            } 
-            else {
-                // Formato sequencial (apenas o binário)
-                if (addr_dados_sequencial <= 255) {
-                    cpu->memoria_principal[addr_dados_sequencial] = (int8_t)binario_para_int16_sem_sinal(linha);
-                    addr_dados_sequencial++;
-                } else {
-                    puts("mini-mips-err: Memória de dados cheia (255).");
-                }
-            }
-        }
-    }
     salvar_txt_logisim(file);
     fclose(file);
-}
-
-static uint8_t extrair_bits(char *tipo, uint16_t instrucao) {
-    if (strcmp(tipo, "opcode") == 0) {
-        return (uint8_t)(instrucao >> 12) & 0x0F; // Opcode está nos bits 31-26
-    } else if (strcmp(tipo, "funct") == 0) {
-        return (uint8_t)(instrucao & 0x07); // Funct está nos bits 5-0
-    }
-    return 0; // Retorna 0 se o tipo for desconhecido
+    printf("Carga finalizada. %d instrucoes carregadas.\n", posicao_atual_memoria_de_instrucoes);
 }
 
 static void salvar_txt_logisim(FILE *file) {
@@ -172,13 +115,31 @@ static void salvar_txt_logisim(FILE *file) {
     puts("mini-mips-info: Arquivo logisim_output.txt gerado com sucesso.");
 }
 
-// static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao) {
-//      if (strlen(linha) > 0) {
-//          memoria_de_instrucoes[*posicao] = binario_para_int16_sem_sinal(linha);
-//          printf("Carregado na posicao [%d]: %s (0x%04X)\n", *posicao, linha, memoria_de_instrucoes[*posicao]);
-//          (*posicao)++;
-//      }
-// }
+static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao) {
+     if (strlen(linha) > 0) {
+         uint16_t instrucao_lida = binario_para_int16_sem_sinal(linha);
+         memoria_de_instrucoes[*posicao] = instrucao_lida;
+         uint8_t opcode = (instrucao_lida >> 12) & 0xF; // Extrai os 4 bits mais significativos
+         printf("Carregado na posicao [%d]: %s (0x%04X)\n", *posicao, linha, memoria_de_instrucoes[*posicao]);
+         (*posicao)++;
+         if (opcode == OPCODE_J) {
+            inserir_nop(memoria_de_instrucoes, posicao);
+         } else if (opcode == OPCODE_BEQ) {
+            inserir_nop(memoria_de_instrucoes, posicao);
+            inserir_nop(memoria_de_instrucoes, posicao);
+         }
+     }
+}
+
+static void inserir_nop(uint16_t *memoria_de_instrucoes, int *posicao) {
+    if (*posicao < MAX_INSTRUCOES) {
+        memoria_de_instrucoes[*posicao] = 0b0001000000000000; // NOP é representado por 0
+        printf("Inserido NOP na posicao [%d]\n", *posicao);
+        (*posicao)++;
+    } else {
+        puts("mini-mips-err: Memória de instruções cheia, não é possível inserir NOP.");
+    }
+}
 
 /* *
  * 
@@ -195,8 +156,6 @@ int exibir_menu() {
 	return validar_opcao_escolhida(opcao);
 	
 }
-
-
 
 static void exibir_opcoes_do_menu() {
 	printf("1.  Carregar memória de instruções (.mem) \n");
@@ -221,13 +180,13 @@ static int validar_opcao_escolhida(int opcao) {
 	return opcao; // sucesso
 }
 
-void salvar_asm(const char *filename, const CPU *cpu){
+void salvar_asm(const char *filename,const uint16_t *memoria_de_instrucao){
     if (!filename || filename[0] == '\0'){
         puts("mini-mips-err->salvar_asm(): O filename não foi especificado.");
         return;
     }
 
-    if (!cpu) {
+    if (!memoria_de_instrucao) {
         puts("mini-mips-err->salvar_asm(): Variável memória de instrução não especificada.");
         return;
     }
@@ -240,10 +199,10 @@ void salvar_asm(const char *filename, const CPU *cpu){
     }
 
     for (int i = 0; i < 256; i++) {
-        if (cpu->memoria_principal[i] == 0)
+        if (memoria_de_instrucao[i] == 0)
             continue;
 
-		InstrucaoDecodificada instr = decodificar_instrucao(cpu->memoria_principal[i]);
+		InstrucaoDecodificada instr = decodificar_instrucao(memoria_de_instrucao[i]);
         char linha[128] = {0};
         converter_para_asm(instr, linha);
         fprintf(fp, "%s\n", linha);
@@ -253,7 +212,7 @@ void salvar_asm(const char *filename, const CPU *cpu){
     printf("mini-mips: seu %s foi gerado!\n", filename);
 }
 
-void salvar_dat(const char *filename, const CPU *cpu){
+void salvar_dat(const char *filename,const int8_t *memoria_de_dados){
 	// Verifica se o arquivo recebido e válido.
 	if(!filename || filename[0] == '\0'){
 		puts("mini-mips-err->salvar_dat(): O filename não foi especificado.");
@@ -261,7 +220,7 @@ void salvar_dat(const char *filename, const CPU *cpu){
 	}
 
 	// Verifica se o ponteiro é válido para os dados.
-	if(!cpu){
+	if(!memoria_de_dados){
 		puts("mini-mips-err->salvar_dat(): Variável memória de dados não especificada.");
 		return;
 	}
@@ -277,10 +236,8 @@ void salvar_dat(const char *filename, const CPU *cpu){
 
 	// Faz o dump da memória de dados, para o arquivo.
 	// Usando o macro PRId8 para printar o int8_t sem warning do compilador
-    fprintf(fp, ".data\n");
-	for(int i = 128; i < 256; i++){
-		int8_t v = ((int8_t)(cpu->memoria_principal[i] & 0xFF));
-        fprintf(fp, "%" PRId8 "\n", v);
+	for(int i = 0; i < 256; i++){
+		fprintf(fp,"%"PRId8"\n",memoria_de_dados[i]);
 	}
 
 	// Fecha o buffer após uso.
@@ -291,16 +248,16 @@ void salvar_dat(const char *filename, const CPU *cpu){
 	return;
 }
 
-void carregar_dat(const char *filename, CPU *cpu) {
+void carregar_dat(const char *filename, int8_t *memoria_de_dados) {
     char line[16]; 
-    int linha = 0;  
+    int linha = 0;
 
     if (!filename || filename[0] == '\0') {
         printf("mini-mips-err: Filename não especificado.\n");
         return;
     }
 
-    if (!cpu) {
+    if (!memoria_de_dados) {
         printf("mini-mips-err: Ponteiro de memória inválido.\n");
         return;
     }
@@ -315,12 +272,8 @@ void carregar_dat(const char *filename, CPU *cpu) {
         puts("mini-mips-err: Erro ao abrir o arquivo.");
         return;
     }
-    int valido = verificar_cabecalho_arquivo(fp);
-    if (!valido) {
-        fclose(fp);
-        return;
-    }
-    while (linha < 128 && fscanf(fp, "%15s", line) == 1) {
+
+    while (linha < 256 && fscanf(fp, "%15s", line) == 1) {
         char *endptr;
         long val = strtol(line, &endptr, 10);
 
@@ -335,7 +288,7 @@ void carregar_dat(const char *filename, CPU *cpu) {
         if (val < -128 || val > 127) {
             printf("Erro: %ld fora do intervalo int8_t na linha %d.\n", val, linha + 1);
         } else {
-            cpu->memoria_principal[128 + linha] = (uint16_t)(int8_t)((int8_t)val);
+            memoria_de_dados[linha] = (int8_t)val;
         }
 
         linha++;
@@ -345,17 +298,4 @@ void carregar_dat(const char *filename, CPU *cpu) {
 	// Fecha o arquivo
     fclose(fp);
 }
-// 0 erro 1 sucesso
-static int verificar_cabecalho_arquivo(FILE *file) {
-    char linha[64];
-    if (!fgets(linha, sizeof(linha), file)) {
-        puts("mini-mips-err: Erro ao ler o arquivo ou arquivo vazio.");
-        return 0;
-    }
-    linha[strcspn(linha, "\r\n")] = '\0';
-    if (strcmp(linha, ".data") != 0) {
-        puts("mini-mips-err: Formato de arquivo inválido. Esperado '.data' no início.");
-        return 0;
-    }
-    return 1;
-}
+
