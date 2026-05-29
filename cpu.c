@@ -112,16 +112,16 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	operador_b = mux_operador_ou_imediato_forward(cpu, cpu->di_ex.b);
 	resultadoUla = executar(operador_a, operador_b, cpu->di_ex.ex_sinais.controle_ula);
 
-	// forward caso store word precise do valor atualizado do registrador
-	int8_t valor_store = cpu->di_ex.b;
+	// forward caso store word precise do valor atualizado do registrador (estagio EX)
+	int8_t valor_store_ex = cpu->di_ex.b;
 	if (cpu->di_ex.mem_sinais.escrever_memoria) {
-		valor_store = mux_forward_store(cpu, cpu->di_ex.rt, valor_store);
+		valor_store_ex = mux_forward_store(cpu, cpu->di_ex.rt, valor_store_ex);
 	}
 
 	// acesso a memoria | TODO: (RETIRAR SINBAIS DE CONTROLE DPS)
-	escrever_end_mem_dados(cpu, cpu->ex_mem.ula_saida, valor_store, sinais_de_controle);
+	escrever_end_mem_dados(cpu, cpu->ex_mem.ula_saida, cpu->ex_mem.b, sinais_de_controle);
 	valor_write_back = mux_write_back(cpu);
-	valor_memoria = ler_end_mem_dados(cpu, cpu->ex_mem.ula_saida);
+	valor_memoria = ler_end_mem_dados(cpu, (uint8_t)(cpu->ex_mem.ula_saida));
 
 	
 	 // Atualiza o RI para a próxima instrução a ser decodificada no próximo ciclo
@@ -142,7 +142,7 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	cpu->ex_mem.mem_sinais = cpu->di_ex.mem_sinais;
 	cpu->ex_mem.opcode = cpu->di_ex.opcode;
 	cpu->ex_mem.ula_saida = resultadoUla.resultado;
-	cpu->ex_mem.b = valor_store;
+	cpu->ex_mem.b = valor_store_ex;
 	cpu->ex_mem.reg_destino = mux_reg_destino(cpu);
 	snprintf(cpu->ex_mem.instrucao_asm, INSTRUCAO_ASM_TAM, "%s", cpu->di_ex.instrucao_asm);
 
@@ -197,12 +197,10 @@ static uint8_t mux_reg_destino(CPU* cpu) {
 
 static int8_t mux_forward_id(CPU *cpu, uint8_t src, int8_t valor) {
 	if (cpu->ex_mem.er.escrever_reg &&
-		cpu->ex_mem.reg_destino != 0 &&
 		cpu->ex_mem.reg_destino == src) {
 		return cpu->ex_mem.ula_saida;
 	}
 	if (cpu->mem_wb.er.escrever_reg &&
-		cpu->mem_wb.reg_destino != 0 &&
 		cpu->mem_wb.reg_destino == src) {
 		return (cpu->mem_wb.er.memoria_para_reg == 0)
 			? cpu->mem_wb.memoria_saida
@@ -213,14 +211,12 @@ static int8_t mux_forward_id(CPU *cpu, uint8_t src, int8_t valor) {
 
 static int8_t mux_operador_forward(CPU* cpu, int8_t operador) {
 	if (cpu->ex_mem.er.escrever_reg &&
-        cpu->ex_mem.reg_destino != 0 &&
         cpu->ex_mem.reg_destino == cpu->di_ex.rs) {
         printf("Encaminhamento: EX/MEM para DI/EX (OPERADOR A)\n");
         return cpu->ex_mem.ula_saida;
     }
 
 	if (cpu->mem_wb.er.escrever_reg &&
-        cpu->mem_wb.reg_destino != 0 &&
         cpu->mem_wb.reg_destino == cpu->di_ex.rs) {
         printf("Encaminhamento: MEM/WB para DI/EX (OPERADOR A)\n");
         return (cpu->mem_wb.er.memoria_para_reg == 0)
@@ -238,14 +234,12 @@ static int8_t mux_operador_ou_imediato_forward(CPU* cpu, int8_t operador) {
     }
 
 	if (cpu->ex_mem.er.escrever_reg &&
-        cpu->ex_mem.reg_destino != 0 &&
         cpu->ex_mem.reg_destino == cpu->di_ex.rt) {
         printf("Encaminhamento: EX/MEM para DI/EX (OPERADOR B)\n");
         return cpu->ex_mem.ula_saida;
     }
 
 	if (cpu->mem_wb.er.escrever_reg &&
-        cpu->mem_wb.reg_destino != 0 &&
         cpu->mem_wb.reg_destino == cpu->di_ex.rt) {
         printf("Encaminhamento: MEM/WB para DI/EX (OPERADOR B)\n");
         return (cpu->mem_wb.er.memoria_para_reg == 0)
@@ -258,14 +252,12 @@ static int8_t mux_operador_ou_imediato_forward(CPU* cpu, int8_t operador) {
 
 static int8_t mux_forward_store(CPU *cpu, uint8_t src, int8_t valor) {
 	if (cpu->ex_mem.er.escrever_reg &&
-		cpu->ex_mem.reg_destino != 0 &&
 		cpu->ex_mem.reg_destino == src &&
 		cpu->ex_mem.er.memoria_para_reg == 1) {
 		printf("Encaminhamento: EX/MEM para MEM (STORE)\n");
 		return cpu->ex_mem.ula_saida;
 	}
 	if (cpu->mem_wb.er.escrever_reg &&
-		cpu->mem_wb.reg_destino != 0 &&
 		cpu->mem_wb.reg_destino == src) {
 		printf("Encaminhamento: MEM/WB para MEM (STORE)\n");
 		return (cpu->mem_wb.er.memoria_para_reg == 0)

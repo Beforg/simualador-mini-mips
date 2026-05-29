@@ -474,9 +474,6 @@ static void debug_pipeline_snapshot(const CPU *cpu, int opcao, const char *titul
         print_int_3bits(cpu->mem_wb.reg_destino);
     else
         printf("%u", cpu->mem_wb.reg_destino);
-
-    
-
         printf("| MEM[W=%u J=%u B=%u] WB[M2R=%u WR=%u]\n",
             cpu->mem_wb.mem_sinais.escrever_memoria,
             cpu->mem_wb.mem_sinais.jump,

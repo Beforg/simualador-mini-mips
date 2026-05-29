@@ -8,13 +8,12 @@
 
 int8_t ler_end_mem_dados(const CPU *p,uint16_t addr){
     if (addr >= 256 || addr < 0) {
-        printf("mini-mips-err: Tentativa de acesso a endereço de dados inválido: %u\n", addr);
         return 0; // Retorna 0 ou algum valor padrão para indicar erro
     }
     return p->memoria_de_dados[addr];
 }                
 void escrever_end_mem_dados(CPU *p,uint8_t addr,int8_t valor, SinaisDeControle sinais_de_controle){
-    if (p->mem_wb.mem_sinais.escrever_memoria == 0) return;
+    if (p->ex_mem.mem_sinais.escrever_memoria == 0) return;
     p->memoria_de_dados[addr] = (uint8_t) valor;
     printf("mini-mips: A memória [%u] tem um novo valor: %d\n",addr,valor);
 } 
