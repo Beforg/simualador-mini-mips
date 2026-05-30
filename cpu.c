@@ -14,7 +14,7 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug);
 static void executar_programa_completo(CPU *cpu);
 static void incrementar_pc(CPU *cpu, SinaisDeControle sinais_de_controle);
 static void resolver_desvio(CPU *cpu, int8_t imediato, uint8_t endereco, SinaisDeControle sinais_de_controle, ResultadoUla resultadoUla);
-static int8_t mux_operador_forward(CPU* cpu,int8_t operador);
+static int8_t mux_operador_forward_di_ex(CPU* cpu,int8_t operador);
 //static uint16_t buscar_instrucao(const CPU *cpu);
 //static uint8_t mux_reg_destino(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada);
 static int8_t mux_fonte_ula(const SinaisDeControle sinais_de_controle, const InstrucaoDecodificada instrucao_decodificada, const CPU *cpu);
@@ -37,9 +37,9 @@ static uint8_t mux_pc_mais_um_ou_branch(CPU *cpu, ResultadoUla resultadoUla);
 static int desvio_condicional_tomado(CPU *cpu, ResultadoUla resultadoUla);
 static uint8_t somador_pc_branch(CPU* cpu);
 static uint8_t somador_pc_mais_um(CPU* cpu);
-static int8_t mux_operador_ou_imediato_forward(CPU* cpu,int8_t operador);
-static int8_t mux_forward_id(CPU *cpu, uint8_t src, int8_t valor);
-static int8_t mux_forward_store(CPU *cpu, uint8_t src, int8_t valor);
+static int8_t mux_operador_ou_imediato_forward_di_ex(CPU* cpu,int8_t operador);
+static int8_t mux_forward_id_ex(CPU *cpu, uint8_t src, int8_t valor);
+static int8_t mux_forward_di_ex_store(CPU *cpu, uint8_t src, int8_t valor);
 
 /* Ver implementação e qual o comportamento do reset. */
 void voltar_cpu(CPU *cpu, PilhaCPU *pilha) {
@@ -103,19 +103,19 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	valor_reg_a = ler_registrador(cpu, instrucao_decodificada.rs);
 	valor_reg_b = ler_registrador(cpu, instrucao_decodificada.rt);
 	if (sinais_de_controle.branch) {
-		valor_reg_a = mux_forward_id(cpu, instrucao_decodificada.rs, valor_reg_a);
-		valor_reg_b = mux_forward_id(cpu, instrucao_decodificada.rt, valor_reg_b);
+		valor_reg_a = mux_forward_id_ex(cpu, instrucao_decodificada.rs, valor_reg_a);
+		valor_reg_b = mux_forward_id_ex(cpu, instrucao_decodificada.rt, valor_reg_b);
 	}
 
 	// lidar com o forward das operacoes da ula.
-	operador_a = mux_operador_forward(cpu, cpu->di_ex.a);
-	operador_b = mux_operador_ou_imediato_forward(cpu, cpu->di_ex.b);
+	operador_a = mux_operador_forward_di_ex(cpu, cpu->di_ex.a);
+	operador_b = mux_operador_ou_imediato_forward_di_ex(cpu, cpu->di_ex.b);
 	resultadoUla = executar(operador_a, operador_b, cpu->di_ex.ex_sinais.controle_ula);
 
 	// forward caso store word precise do valor atualizado do registrador (estagio EX)
 	int8_t valor_store_ex = cpu->di_ex.b;
 	if (cpu->di_ex.mem_sinais.escrever_memoria) {
-		valor_store_ex = mux_forward_store(cpu, cpu->di_ex.rt, valor_store_ex);
+		valor_store_ex = mux_forward_di_ex_store(cpu, cpu->di_ex.rt, valor_store_ex);
 	}
 
 	// acesso a memoria | TODO: (RETIRAR SINBAIS DE CONTROLE DPS)
@@ -195,7 +195,7 @@ static uint8_t mux_reg_destino(CPU* cpu) {
 	}
 }
 
-static int8_t mux_forward_id(CPU *cpu, uint8_t src, int8_t valor) {
+static int8_t mux_forward_id_ex(CPU *cpu, uint8_t src, int8_t valor) {
 	if (cpu->ex_mem.er.escrever_reg &&
 		cpu->ex_mem.reg_destino == src) {
 		printf("Forward: Registrador %d com valor %d de EX/MEM para ID/EX\n", src, cpu->ex_mem.ula_saida);
@@ -211,7 +211,7 @@ static int8_t mux_forward_id(CPU *cpu, uint8_t src, int8_t valor) {
 	return valor;
 }
 
-static int8_t mux_operador_forward(CPU* cpu, int8_t operador) {
+static int8_t mux_operador_forward_di_ex(CPU* cpu, int8_t operador) {
 	if (cpu->ex_mem.er.escrever_reg &&
         cpu->ex_mem.reg_destino == cpu->di_ex.rs) {
         printf("Forward: Registrador %d com valor %d de EX/MEM para DI/EX (OPERADOR A)\n", cpu->di_ex.rs, cpu->ex_mem.ula_saida);
@@ -229,7 +229,7 @@ static int8_t mux_operador_forward(CPU* cpu, int8_t operador) {
     return operador;
 }
 
-static int8_t mux_operador_ou_imediato_forward(CPU* cpu, int8_t operador) {
+static int8_t mux_operador_ou_imediato_forward_di_ex(CPU* cpu, int8_t operador) {
     // Se for imediato, nao faz forwarding em B
     if (cpu->di_ex.ex_sinais.ula_fonte == 1) {
         return cpu->di_ex.imediato;
@@ -253,7 +253,7 @@ static int8_t mux_operador_ou_imediato_forward(CPU* cpu, int8_t operador) {
     return operador;
 }
 
-static int8_t mux_forward_store(CPU *cpu, uint8_t src, int8_t valor) {
+static int8_t mux_forward_di_ex_store(CPU *cpu, uint8_t src, int8_t valor) {
 	if (cpu->ex_mem.er.escrever_reg &&
 		cpu->ex_mem.reg_destino == src &&
 		cpu->ex_mem.er.memoria_para_reg == 1) {

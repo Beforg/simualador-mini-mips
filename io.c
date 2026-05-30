@@ -176,13 +176,12 @@ static void ajustar_enderecos_desvios(uint16_t *memoria_de_instrucoes, const uin
         }
 
         if (opcode == OPCODE_BEQ) {
-            int8_t offset_original = extender_sinal(instrucao);
-            int alvo_original = i + 1 + offset_original;
-            if (alvo_original < 0 || alvo_original >= total_originais) {
+            uint8_t destino_original = (uint8_t)(instrucao & 0x3F); // destino absoluto original
+            if (destino_original >= (uint8_t)total_originais) {
                 continue;
             }
             int pc_mais_um_novo = map_orig_to_new[i] + 1;
-            int alvo_novo = map_orig_to_new[alvo_original];
+            int alvo_novo = map_orig_to_new[destino_original];
             int offset_novo = alvo_novo - pc_mais_um_novo;
             if (offset_novo < -32 || offset_novo > 31) {
                 printf("mini-mips-warn: Offset de branch fora do intervalo em %d.\n", i);
