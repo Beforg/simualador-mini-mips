@@ -198,10 +198,12 @@ static uint8_t mux_reg_destino(CPU* cpu) {
 static int8_t mux_forward_id(CPU *cpu, uint8_t src, int8_t valor) {
 	if (cpu->ex_mem.er.escrever_reg &&
 		cpu->ex_mem.reg_destino == src) {
+		printf("Forward: Registrador %d com valor %d de EX/MEM para ID/EX\n", src, cpu->ex_mem.ula_saida);
 		return cpu->ex_mem.ula_saida;
 	}
 	if (cpu->mem_wb.er.escrever_reg &&
 		cpu->mem_wb.reg_destino == src) {
+		printf("Forward: Registrador %d com valor %d de MEM/WB para ID/EX\n", src, (cpu->mem_wb.er.memoria_para_reg == 0) ? cpu->mem_wb.memoria_saida : cpu->mem_wb.ula_saida);
 		return (cpu->mem_wb.er.memoria_para_reg == 0)
 			? cpu->mem_wb.memoria_saida
 			: cpu->mem_wb.ula_saida;
@@ -212,13 +214,13 @@ static int8_t mux_forward_id(CPU *cpu, uint8_t src, int8_t valor) {
 static int8_t mux_operador_forward(CPU* cpu, int8_t operador) {
 	if (cpu->ex_mem.er.escrever_reg &&
         cpu->ex_mem.reg_destino == cpu->di_ex.rs) {
-        printf("Encaminhamento: EX/MEM para DI/EX (OPERADOR A)\n");
+        printf("Forward: Registrador %d com valor %d de EX/MEM para DI/EX (OPERADOR A)\n", cpu->di_ex.rs, cpu->ex_mem.ula_saida);
         return cpu->ex_mem.ula_saida;
     }
 
 	if (cpu->mem_wb.er.escrever_reg &&
         cpu->mem_wb.reg_destino == cpu->di_ex.rs) {
-        printf("Encaminhamento: MEM/WB para DI/EX (OPERADOR A)\n");
+        printf("Forward: Registrador %d com valor %d de MEM/WB para DI/EX (OPERADOR A)\n", cpu->di_ex.rs, (cpu->mem_wb.er.memoria_para_reg == 0) ? cpu->mem_wb.memoria_saida : cpu->mem_wb.ula_saida);
         return (cpu->mem_wb.er.memoria_para_reg == 0)
             ? cpu->mem_wb.memoria_saida
             : cpu->mem_wb.ula_saida;
@@ -235,13 +237,14 @@ static int8_t mux_operador_ou_imediato_forward(CPU* cpu, int8_t operador) {
 
 	if (cpu->ex_mem.er.escrever_reg &&
         cpu->ex_mem.reg_destino == cpu->di_ex.rt) {
-        printf("Encaminhamento: EX/MEM para DI/EX (OPERADOR B)\n");
+        printf("Forward: Registrador %d com valor %d de EX/MEM para DI/EX (OPERADOR B)\n", cpu->di_ex.rt, cpu->ex_mem.ula_saida);
         return cpu->ex_mem.ula_saida;
     }
 
 	if (cpu->mem_wb.er.escrever_reg &&
         cpu->mem_wb.reg_destino == cpu->di_ex.rt) {
-        printf("Encaminhamento: MEM/WB para DI/EX (OPERADOR B)\n");
+		printf("Forward: Registrador %d com valor ", cpu->di_ex.rt);
+		printf("%d de MEM/WB para DI/EX (OPERADOR B)\n", (cpu->mem_wb.er.memoria_para_reg == 0) ? cpu->mem_wb.memoria_saida : cpu->mem_wb.ula_saida);
         return (cpu->mem_wb.er.memoria_para_reg == 0)
             ? cpu->mem_wb.memoria_saida
             : cpu->mem_wb.ula_saida;
@@ -254,12 +257,12 @@ static int8_t mux_forward_store(CPU *cpu, uint8_t src, int8_t valor) {
 	if (cpu->ex_mem.er.escrever_reg &&
 		cpu->ex_mem.reg_destino == src &&
 		cpu->ex_mem.er.memoria_para_reg == 1) {
-		printf("Encaminhamento: EX/MEM para MEM (STORE)\n");
+		printf("Forward: Registrador %d com valor %d de EX/MEM para DI/EX (STORE)\n", src, cpu->ex_mem.ula_saida);
 		return cpu->ex_mem.ula_saida;
 	}
 	if (cpu->mem_wb.er.escrever_reg &&
 		cpu->mem_wb.reg_destino == src) {
-		printf("Encaminhamento: MEM/WB para MEM (STORE)\n");
+		printf("Forward: Registrador %d com valor %d de MEM/WB para DI/EX (STORE)\n", src, (cpu->mem_wb.er.memoria_para_reg == 0) ? cpu->mem_wb.memoria_saida : cpu->mem_wb.ula_saida);
 		return (cpu->mem_wb.er.memoria_para_reg == 0)
 			? cpu->mem_wb.memoria_saida
 			: cpu->mem_wb.ula_saida;
@@ -298,7 +301,7 @@ static uint8_t mux_pc_mais_um_ou_branch_ou_jump(
 static uint8_t mux_pc_mais_um_ou_branch(CPU *cpu, ResultadoUla resultadoUla) {
 	
 	if (desvio_condicional_tomado(cpu, resultadoUla) == 1) { 
-		printf("Verificando BR");// Verifica se é um branch e se o resultado da ULA é zero
+		// Verifica se é um branch e se o resultado da ULA é zero
 		return somador_pc_branch(cpu); // Atualiza o PC para o endereço do branch
 	} else {
 		return somador_pc_mais_um(cpu); // Incrementa o PC normalmente
