@@ -166,6 +166,7 @@ static void ajustar_enderecos_desvios(uint16_t *memoria_de_instrucoes, const uin
         int posicao_nova = map_orig_to_new[i];
 
         if (opcode == OPCODE_J) {
+            printf("Ajustando endereço para instrução J na posição [%d]\n", posicao_nova);
             uint8_t destino_original = (uint8_t)(instrucao & 0xFF);
             if (destino_original >= (uint8_t)total_originais) {
                 continue;
@@ -176,6 +177,7 @@ static void ajustar_enderecos_desvios(uint16_t *memoria_de_instrucoes, const uin
         }
 
         if (opcode == OPCODE_BEQ) {
+            printf("Ajustando offset para instrução BEQ na posição [%d]\n", posicao_nova);
             int8_t offset_original = extender_sinal(instrucao);
             int alvo_original = i + 1 + offset_original;
             if (alvo_original < 0 || alvo_original >= total_originais) {
@@ -188,6 +190,7 @@ static void ajustar_enderecos_desvios(uint16_t *memoria_de_instrucoes, const uin
                 printf("mini-mips-warn: Offset de branch fora do intervalo em %d.\n", i);
                 continue;
             }
+            printf("Offset novo %d para instrução BEQ na posição [%d]\n", offset_novo, posicao_nova);
             memoria_de_instrucoes[posicao_nova] = (uint16_t)((instrucao & 0xFFC0) | ((uint16_t)offset_novo & 0x3F));
         }
     }
