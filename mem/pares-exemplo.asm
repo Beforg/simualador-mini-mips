@@ -6,6 +6,7 @@ addi $r2,$r2,1     0100010010000001   # i++
 sw $r0, 0($r4)     1111100000000000   # Salvar no vetor genérico
 addi $r4,$r4,1     0100100100000001   # Incrementa o endereco de $r4
 j 2                0010000000000010   # jump para o beq, se n < 1
+sub $r4,$r2,$r1
 
 
 
