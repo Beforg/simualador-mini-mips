@@ -7,7 +7,7 @@
 #include "memoria.h"
 #include "utils.h"
 #include "debug.h"
-
+#include <stdbool.h>
 /*Funções auxiliares*/
 static void iniciar_cpu(CPU *cpu);
 static void executrar_ciclo(CPU *cpu, int opcao_debug);
@@ -40,6 +40,10 @@ static uint8_t somador_pc_mais_um(CPU* cpu);
 static int8_t mux_operador_ou_imediato_forward_di_ex(CPU* cpu,int8_t operador);
 static int8_t mux_forward_id_ex(CPU *cpu, uint8_t src, int8_t valor);
 static int8_t mux_forward_di_ex_store(CPU *cpu, uint8_t src, int8_t valor);
+// STALL
+static int verificar_stall_lw(CPU* cpu, InstrucaoDecodificada instrucao_decodificada);
+static bool flush_branch_tomado(CPU* cpu, SinaisDeControle sinais_de_controle,ResultadoUla resultadoUla);
+static bool flush_jump_tomado(CPU* cpu, SinaisDeControle sinais_de_controle);
 
 /* Ver implementação e qual o comportamento do reset. */
 void voltar_cpu(CPU *cpu, PilhaCPU *pilha) {
@@ -92,9 +96,12 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	int8_t valor_memoria; // Valor lido da memória de dados (para instruções de load)	
 	char instrucao_asm[INSTRUCAO_ASM_TAM]; // String para representação em ASM da instrução atual (para debug)
 	char instrucao_asm_bi_di[INSTRUCAO_ASM_TAM]; // String para instrução buscada (BI/DI)
-
+	bool flush_cpu;
 
 	instrucao_decodificada = decodificar_instrucao(cpu->bi_di.ri);	
+	if (verificar_stall_lw(cpu, instrucao_decodificada)) { // Verifica se é necessário inserir um stall
+		return; // Sair de executrar_ciclo sem atualizar nada mais
+	}
 	instrucao_asm[0] = '\0';
 	converter_para_asm(instrucao_decodificada, instrucao_asm);
 	sinais_de_controle = gerar_sinais_de_controle(instrucao_decodificada.opcode, instrucao_decodificada.funct);
@@ -149,7 +156,8 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	// Guardar os proximos valores para o BEQ funcionar corretamente antes de substituir o PC
 	uint8_t pc_atual = cpu->pc;
 	uint8_t proximo_pc = atualizar_pc(cpu, resultadoUla, instrucao_decodificada, sinais_de_controle);
-
+	flush_cpu = flush_branch_tomado(cpu, sinais_de_controle, resultadoUla);
+	if (!flush_cpu) {
 	cpu->di_ex.er.memoria_para_reg = sinais_de_controle.memoria_para_reg;
 	cpu->di_ex.er.escrever_reg = sinais_de_controle.escrever_reg;
 	cpu->di_ex.mem_sinais.branch = sinais_de_controle.branch;
@@ -168,24 +176,74 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	cpu->di_ex.rs = instrucao_decodificada.rs;
 	snprintf(cpu->di_ex.instrucao_asm, INSTRUCAO_ASM_TAM, "%s", instrucao_asm);
 
-
+	if (!flush_jump_tomado(cpu, sinais_de_controle)) {
 	cpu->bi_di.pc_mais_um = (uint8_t)(pc_atual + 1); // PC+1 do endereco que foi buscado
 	cpu->bi_di.ri = ler_end_mem_instrucao(cpu, pc_atual);
 	instrucao_asm_bi_di[0] = '\0';
 	converter_para_asm(decodificar_instrucao(cpu->bi_di.ri), instrucao_asm_bi_di);
 	snprintf(cpu->bi_di.instrucao_asm, INSTRUCAO_ASM_TAM, "%s", instrucao_asm_bi_di);
+	}
+	}
 	cpu->pc = proximo_pc;
 	
 
 
 
-
-	debug_geral(instrucao_decodificada,instrucao, sinais_de_controle, resultadoUla, cpu, opcao_debug);
 	debug_pipeline(&cpu_antes, cpu, opcao_debug);
+	debug_geral(instrucao_decodificada,instrucao, sinais_de_controle, resultadoUla, cpu, opcao_debug);
+
 	
 }
 
 // Funçoes PIPELINE =================== :
+static bool flush_jump_tomado(CPU* cpu, SinaisDeControle sinais_de_controle) {
+	if (sinais_de_controle.jump) {
+		printf("mini-mips-info: Jump tomado! Fazendo flush.\n");
+
+		// Flush: zerar BI/DI e DI/EX
+		cpu->bi_di.ri = 4096;
+		snprintf(cpu->bi_di.instrucao_asm, INSTRUCAO_ASM_TAM, "NOP");
+		cpu->bi_di.pc_mais_um = 0;
+		//sprintf(cpu->bi_di.instrucao_asm, INSTRUCAO_ASM_TAM, "NOP");
+
+		return true;
+	}
+	return false;
+}
+
+static bool flush_branch_tomado(CPU* cpu, SinaisDeControle sinais_de_controle,ResultadoUla resultadoUla) {
+	if (desvio_condicional_tomado(cpu, resultadoUla)) {
+    printf("mini-mips-info: Branch tomado! Fazendo flush.\n");
+
+    // Flush: zerar BI/DI e DI/EX
+	cpu->bi_di.ri = 4096;
+	snprintf(cpu->bi_di.instrucao_asm, INSTRUCAO_ASM_TAM, "NOP");
+	cpu->bi_di.pc_mais_um = 0;
+    cpu->di_ex = (DI_EX){0};
+	snprintf(cpu->di_ex.instrucao_asm, INSTRUCAO_ASM_TAM, "NOP");
+    return true;
+    // EX/MEM e MEM/WB continuam normalmente
+	}
+return false;
+}
+int verificar_stall_lw(CPU* cpu, InstrucaoDecodificada instrucao_decodificada) {
+	bool lw_use = (cpu->di_ex.opcode == OPCODE_LW) &&
+              ((instrucao_decodificada.rs == cpu->di_ex.rt) ||
+               (instrucao_decodificada.rt == cpu->di_ex.rt));
+
+	if (lw_use) {
+		printf("mini-mips-hazard: Load-use detectado! Inserindo stall.\n");
+		// Não atualizar PC
+		// Não atualizar BI/DI
+		// Injetar bubble em DI/EX
+		cpu->di_ex.er = (ErSinais){0};
+		cpu->di_ex.mem_sinais = (MemSinais){0};
+		cpu->di_ex.ex_sinais = (ExSinais){0};
+		return 1; // Retornar 1 indicando que houve stall
+	}
+	return 0; // Retornar 0 se não houve stallcpu->di_ex.ex_sinais = (ExSinais){0};
+		return; // Sair sem atualizar o resto do pipeline
+	}
 
 static uint8_t mux_reg_destino(CPU* cpu) {
 	if (cpu->di_ex.ex_sinais.reg_destino == 0) {

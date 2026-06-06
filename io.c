@@ -138,14 +138,14 @@ static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t
          uint8_t opcode = (instrucao_lida >> 12) & 0xF; // Extrai os 4 bits mais significativos
          printf("Carregado na posicao [%d]: %s (0x%04X)\n", *posicao, linha, memoria_de_instrucoes[*posicao]);
          (*posicao)++;
-         if (opcode == OPCODE_J) {
-            inserir_nop(memoria_de_instrucoes, posicao);
-         } else if (opcode == OPCODE_BEQ) {
-            inserir_nop(memoria_de_instrucoes, posicao);
-            inserir_nop(memoria_de_instrucoes, posicao);
-            } else if (opcode == OPCODE_LW) {
-                inserir_nop(memoria_de_instrucoes, posicao);
-         }
+        // if (opcode == OPCODE_J) {
+         //   inserir_nop(memoria_de_instrucoes, posicao);
+        // } else if (opcode == OPCODE_BEQ) {
+          //  inserir_nop(memoria_de_instrucoes, posicao);
+           // inserir_nop(memoria_de_instrucoes, posicao);
+           // } else if (opcode == OPCODE_LW) {
+           //     inserir_nop(memoria_de_instrucoes, posicao);
+        // }
      }
 }
 
