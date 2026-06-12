@@ -38,7 +38,7 @@ static int desvio_condicional_tomado(CPU *cpu, ResultadoUla resultadoUla);
 static uint8_t somador_pc_branch(CPU* cpu);
 static uint8_t somador_pc_mais_um(CPU* cpu);
 static int8_t mux_operador_ou_imediato_forward_di_ex(CPU* cpu,int8_t operador);
-static int8_t mux_forward_id_ex(CPU *cpu, uint8_t src, int8_t valor);
+static int8_t mux_forward_di_ex(CPU *cpu, uint8_t src, int8_t valor);
 static int8_t mux_forward_di_ex_store(CPU *cpu, uint8_t src, int8_t valor);
 // STALL
 static int verificar_stall_lw(CPU* cpu, InstrucaoDecodificada instrucao_decodificada);
@@ -110,8 +110,8 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	valor_reg_a = ler_registrador(cpu, instrucao_decodificada.rs);
 	valor_reg_b = ler_registrador(cpu, instrucao_decodificada.rt);
 	if (sinais_de_controle.branch) {
-		valor_reg_a = mux_forward_id_ex(cpu, instrucao_decodificada.rs, valor_reg_a);
-		valor_reg_b = mux_forward_id_ex(cpu, instrucao_decodificada.rt, valor_reg_b);
+		valor_reg_a = mux_forward_di_ex(cpu, instrucao_decodificada.rs, valor_reg_a);
+		valor_reg_b = mux_forward_di_ex(cpu, instrucao_decodificada.rt, valor_reg_b);
 	}
 
 	// lidar com o forward das operacoes da ula.
@@ -253,7 +253,7 @@ static uint8_t mux_reg_destino(CPU* cpu) {
 	}
 }
 
-static int8_t mux_forward_id_ex(CPU *cpu, uint8_t src, int8_t valor) {
+static int8_t mux_forward_di_ex(CPU *cpu, uint8_t src, int8_t valor) {
 	if (cpu->ex_mem.er.escrever_reg &&
 		cpu->ex_mem.reg_destino == src) {
 		printf("Forward: Registrador %d com valor %d de EX/MEM para ID/EX\n", src, cpu->ex_mem.ula_saida);
