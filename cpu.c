@@ -97,11 +97,11 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	char instrucao_asm[INSTRUCAO_ASM_TAM]; // String para representação em ASM da instrução atual (para debug)
 	char instrucao_asm_bi_di[INSTRUCAO_ASM_TAM]; // String para instrução buscada (BI/DI)
 	bool flush_cpu;
+	bool stall_lw;
 
 	instrucao_decodificada = decodificar_instrucao(cpu->bi_di.ri);	
-	if (verificar_stall_lw(cpu, instrucao_decodificada)) { // Verifica se é necessário inserir um stall
-		return; // Sair de executrar_ciclo sem atualizar nada mais
-	}
+	
+
 	instrucao_asm[0] = '\0';
 	converter_para_asm(instrucao_decodificada, instrucao_asm);
 	sinais_de_controle = gerar_sinais_de_controle(instrucao_decodificada.opcode, instrucao_decodificada.funct);
@@ -156,8 +156,9 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	// Guardar os proximos valores para o BEQ funcionar corretamente antes de substituir o PC
 	uint8_t pc_atual = cpu->pc;
 	uint8_t proximo_pc = atualizar_pc(cpu, resultadoUla, instrucao_decodificada, sinais_de_controle);
+	stall_lw = verificar_stall_lw(cpu, instrucao_decodificada);
 	flush_cpu = flush_branch_tomado(cpu, sinais_de_controle, resultadoUla);
-	if (!flush_cpu) {
+	if (!flush_cpu && !stall_lw) {
 	cpu->di_ex.er.memoria_para_reg = sinais_de_controle.memoria_para_reg;
 	cpu->di_ex.er.escrever_reg = sinais_de_controle.escrever_reg;
 	cpu->di_ex.mem_sinais.branch = sinais_de_controle.branch;
@@ -184,7 +185,11 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	snprintf(cpu->bi_di.instrucao_asm, INSTRUCAO_ASM_TAM, "%s", instrucao_asm_bi_di);
 	}
 	}
-	cpu->pc = proximo_pc;
+
+	if (!stall_lw) {
+		cpu->pc = proximo_pc;
+	}
+
 	
 
 
@@ -236,9 +241,18 @@ int verificar_stall_lw(CPU* cpu, InstrucaoDecodificada instrucao_decodificada) {
 		// Não atualizar PC
 		// Não atualizar BI/DI
 		// Injetar bubble em DI/EX
+		snprintf(cpu->di_ex.instrucao_asm, INSTRUCAO_ASM_TAM, "NOP");
 		cpu->di_ex.er = (ErSinais){0};
 		cpu->di_ex.mem_sinais = (MemSinais){0};
 		cpu->di_ex.ex_sinais = (ExSinais){0};
+		cpu->di_ex.a = 0;
+		cpu->di_ex.b = 0;
+		cpu->di_ex.imediato = 0;
+		cpu->di_ex.opcode = 0;
+		cpu->di_ex.rd = 0;
+		cpu->di_ex.rt = 0;
+		cpu->di_ex.rs = 0;
+		cpu->di_ex.pc_mais_um = 0;
 		return 1; // Retornar 1 indicando que houve stall
 	}
 	return 0; // Retornar 0 se não houve stallcpu->di_ex.ex_sinais = (ExSinais){0};
