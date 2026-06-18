@@ -407,6 +407,7 @@ static void iniciar_cpu(CPU *cpu)
 {
 	// Novoas variáveis para o pipeline:
 	int posicao;
+	cpu->estatistica = (Estatisticas){0};
 	cpu->pc = 0;
 	cpu->bi_di = (BI_DI){0, 0};
 	cpu->di_ex = (DI_EX){0};
