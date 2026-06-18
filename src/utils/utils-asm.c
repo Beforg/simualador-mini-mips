@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "utils/utils.h"
 
 void to_lower_str(char *str) {
     if (str == NULL) return;

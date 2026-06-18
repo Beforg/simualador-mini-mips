@@ -7,6 +7,10 @@
 
 //novas estruturas:
 typedef struct Estatisticas {
+
+  int hazards;
+  int stalls;
+  int flushes;
   int total_instrucoes;
   int total_instrucoes_executadas;
   int total_tipo_j;

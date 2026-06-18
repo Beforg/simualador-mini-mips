@@ -1,44 +1,13 @@
-#include "estatisticas.h"
+#include "core/estatisticas.h"
 #include <stdio.h>
 
 
 Estatisticas dados = {0,0,0,0};
 
-void reset_estatisticas(){
-    dados.total_instrucoes = 
-    dados.total_tipo_i = 
-    dados.total_tipo_j = 
-    dados.total_tipo_r = 0;
 
-    dados.perc_i =
-    dados.perc_j =
-    dados.perc_r =
-    0.0;
-}
-
-void mostrar_estatisticas(){
-    if(dados.total_instrucoes != 0){
-        dados.perc_i = ((float)dados.total_tipo_i /dados.total_instrucoes) * 100;
-        dados.perc_j = ((float)dados.total_tipo_j /dados.total_instrucoes) * 100;
-        dados.perc_r = ((float)dados.total_tipo_r /dados.total_instrucoes) * 100;
-    }
-    
-
-    printf("======================ESTATÍSTICAS======================\n");
-    printf("Total de instruções:[%d]\n",dados.total_instrucoes);
-    printf("Instruções TIPO R:[%d]\n",dados.total_tipo_r);
-    printf("Instruções TIPO I:[%d]\n",dados.total_tipo_i);
-    printf("Instruções TIPO J:[%d]\n",dados.total_tipo_j);
-    printf("%% TIPO R:[%.1f%%]\n",dados.perc_r);
-    printf("%% TIPO I:[%.1f%%]\n",dados.perc_i);
-    printf("%% TIPO J:[%.1f%%]\n",dados.perc_j);
-    printf("========================================================\n");
-}
-
-static void incrementar_ciclos(CPU *cpu, uint8_t opcode, uint8_t funct, EstadosControle estado_atual) {
+static void incrementar_ciclos(CPU *cpu, uint8_t funct) {
  // Não contabiliza ciclos durante a fase de IF
-    if (estado_atual != IF) {
-    switch (opcode) {
+    switch (cpu->mem_wb.opcode) {
         case OPCODE_R:
             switch (funct) {
                 case FUNCT_ADD:
@@ -76,11 +45,10 @@ static void incrementar_ciclos(CPU *cpu, uint8_t opcode, uint8_t funct, EstadosC
             break;
     }
 }
-}
 
 void contabilizar_estatisticas(CPU* cpu, InstrucaoDecodificada instrucao_decodificada)
 {
-    incrementar_ciclos(cpu, instrucao_decodificada.opcode, instrucao_decodificada.funct);
+    incrementar_ciclos(cpu, instrucao_decodificada.funct);
     // Incrementa o total por tipo de instrução
         switch (cpu->mem_wb.opcode)
         {
@@ -89,19 +57,15 @@ void contabilizar_estatisticas(CPU* cpu, InstrucaoDecodificada instrucao_decodif
             {
             case FUNCT_ADD:
                 cpu->estatistica.total_add_executadas++;
-                cpu->estatistica.total_ciclos_add += 1;
                 break;
             case FUNCT_SUB:
                 cpu->estatistica.total_sub_executadas++;
-                cpu->estatistica.total_ciclos_sub += 1;
                 break;
             case FUNCT_OR:
                 cpu->estatistica.total_or_executadas++;
-                cpu->estatistica.total_ciclos_or += 1;
                 break;
             case FUNCT_AND:
                 cpu->estatistica.total_and_executadas++;
-                cpu->estatistica.total_ciclos_and += 1;
                 break;
             default:
                 break;
@@ -109,23 +73,18 @@ void contabilizar_estatisticas(CPU* cpu, InstrucaoDecodificada instrucao_decodif
             break;
         case OPCODE_ADDI:
             cpu->estatistica.total_addi_executadas++;
-            cpu->estatistica.total_ciclos_addi += 1;
             break;
         case OPCODE_LW:
             cpu->estatistica.total_lw_executadas++;
-            cpu->estatistica.total_ciclos_lw += 1;
             break;
         case OPCODE_SW:
             cpu->estatistica.total_sw_executadas++;
-            cpu->estatistica.total_ciclos_sw += 1;
             break;
         case OPCODE_BEQ:
             cpu->estatistica.total_beq_executadas++;
-            cpu->estatistica.total_ciclos_beq += 1;
             break;
         case OPCODE_J:
             cpu->estatistica.total_j_executadas++;
-            cpu->estatistica.total_ciclos_j += 1;
             break;
         default:
             break;

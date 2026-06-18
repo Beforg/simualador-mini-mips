@@ -1,5 +1,5 @@
-# include "controle.h"
-# include "types.h"
+# include "core/controle.h"
+# include "core/types.h"
 
 static void gerar_sinais_add(SinaisDeControle *sinais_de_controle);
 static void gerar_sinais_sub(SinaisDeControle *sinais_de_controle);

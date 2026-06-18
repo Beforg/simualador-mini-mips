@@ -1,13 +1,13 @@
 #include <stdio.h>
-#include "types.h"
-#include "decodificador.h"
-#include "conversor.h"
-#include "controle.h"
-#include "ula.h"
-#include "memoria.h"
-#include "utils.h"
-#include "debug.h"
-#include <stdbool.h>
+#include "core/types.h"
+#include "core/decodificador.h"
+#include "core/conversor.h"
+#include "core/controle.h"
+#include "core/ula.h"
+#include "core/memoria.h"
+#include "utils/utils.h"
+#include "core/estatisticas.h"
+#include "utils/debug.h"
 /*Funções auxiliares*/
 static void iniciar_cpu(CPU *cpu);
 static void executrar_ciclo(CPU *cpu, int opcao_debug);
@@ -193,7 +193,7 @@ static void executrar_ciclo(CPU *cpu, int opcao_debug)
 	
 
 
-
+	incrementar_estatisticas(cpu, instrucao_decodificada, resultadoUla, flush_cpu, stall_lw);
 	debug_pipeline(&cpu_antes, cpu, opcao_debug);
 	debug_geral(instrucao_decodificada,instrucao, sinais_de_controle, resultadoUla, cpu, opcao_debug);
 
@@ -209,6 +209,7 @@ static bool flush_jump_tomado(CPU* cpu, SinaisDeControle sinais_de_controle) {
 		cpu->bi_di.ri = 4096;
 		snprintf(cpu->bi_di.instrucao_asm, INSTRUCAO_ASM_TAM, "NOP");
 		cpu->bi_di.pc_mais_um = 0;
+		cpu->estatistica.flushes++;
 		//sprintf(cpu->bi_di.instrucao_asm, INSTRUCAO_ASM_TAM, "NOP");
 
 		return true;
@@ -226,6 +227,7 @@ static bool flush_branch_tomado(CPU* cpu, SinaisDeControle sinais_de_controle,Re
 	cpu->bi_di.pc_mais_um = 0;
     cpu->di_ex = (DI_EX){0};
 	snprintf(cpu->di_ex.instrucao_asm, INSTRUCAO_ASM_TAM, "NOP");
+	cpu->estatistica.flushes++;
     return true;
     // EX/MEM e MEM/WB continuam normalmente
 	}
@@ -253,6 +255,7 @@ int verificar_stall_lw(CPU* cpu, InstrucaoDecodificada instrucao_decodificada) {
 		cpu->di_ex.rt = 0;
 		cpu->di_ex.rs = 0;
 		cpu->di_ex.pc_mais_um = 0;
+		cpu->estatistica.stalls++;
 		return 1; // Retornar 1 indicando que houve stall
 	}
 	return 0; // Retornar 0 se não houve stallcpu->di_ex.ex_sinais = (ExSinais){0};
@@ -286,12 +289,14 @@ static int8_t mux_forward_di_ex(CPU *cpu, uint8_t src, int8_t valor) {
 static int8_t mux_operador_forward_di_ex(CPU* cpu, int8_t operador) {
 	if (cpu->ex_mem.er.escrever_reg &&
         cpu->ex_mem.reg_destino == cpu->di_ex.rs) {
+		cpu->estatistica.hazards++;
         printf("Forward: Registrador %d com valor %d de EX/MEM para DI/EX (OPERADOR A)\n", cpu->di_ex.rs, cpu->ex_mem.ula_saida);
         return cpu->ex_mem.ula_saida;
     }
 
 	if (cpu->mem_wb.er.escrever_reg &&
         cpu->mem_wb.reg_destino == cpu->di_ex.rs) {
+		cpu->estatistica.hazards++;
         printf("Forward: Registrador %d com valor %d de MEM/WB para DI/EX (OPERADOR A)\n", cpu->di_ex.rs, (cpu->mem_wb.er.memoria_para_reg == 0) ? cpu->mem_wb.memoria_saida : cpu->mem_wb.ula_saida);
         return (cpu->mem_wb.er.memoria_para_reg == 0)
             ? cpu->mem_wb.memoria_saida
@@ -310,6 +315,7 @@ static int8_t mux_operador_ou_imediato_forward_di_ex(CPU* cpu, int8_t operador) 
 	if (cpu->ex_mem.er.escrever_reg &&
         cpu->ex_mem.reg_destino == cpu->di_ex.rt) {
         printf("Forward: Registrador %d com valor %d de EX/MEM para DI/EX (OPERADOR B)\n", cpu->di_ex.rt, cpu->ex_mem.ula_saida);
+		cpu->estatistica.hazards++;
         return cpu->ex_mem.ula_saida;
     }
 
@@ -317,6 +323,7 @@ static int8_t mux_operador_ou_imediato_forward_di_ex(CPU* cpu, int8_t operador) 
         cpu->mem_wb.reg_destino == cpu->di_ex.rt) {
 		printf("Forward: Registrador %d com valor ", cpu->di_ex.rt);
 		printf("%d de MEM/WB para DI/EX (OPERADOR B)\n", (cpu->mem_wb.er.memoria_para_reg == 0) ? cpu->mem_wb.memoria_saida : cpu->mem_wb.ula_saida);
+		cpu->estatistica.hazards++;
         return (cpu->mem_wb.er.memoria_para_reg == 0)
             ? cpu->mem_wb.memoria_saida
             : cpu->mem_wb.ula_saida;
@@ -330,11 +337,13 @@ static int8_t mux_forward_di_ex_store(CPU *cpu, uint8_t src, int8_t valor) {
 		cpu->ex_mem.reg_destino == src &&
 		cpu->ex_mem.er.memoria_para_reg == 1) {
 		printf("Forward: Registrador %d com valor %d de EX/MEM para DI/EX (STORE)\n", src, cpu->ex_mem.ula_saida);
+		cpu->estatistica.hazards++;
 		return cpu->ex_mem.ula_saida;
 	}
 	if (cpu->mem_wb.er.escrever_reg &&
 		cpu->mem_wb.reg_destino == src) {
 		printf("Forward: Registrador %d com valor %d de MEM/WB para DI/EX (STORE)\n", src, (cpu->mem_wb.er.memoria_para_reg == 0) ? cpu->mem_wb.memoria_saida : cpu->mem_wb.ula_saida);
+		cpu->estatistica.hazards++;
 		return (cpu->mem_wb.er.memoria_para_reg == 0)
 			? cpu->mem_wb.memoria_saida
 			: cpu->mem_wb.ula_saida;
@@ -410,7 +419,10 @@ static void iniciar_cpu(CPU *cpu)
 	cpu->estatistica = (Estatisticas){0};
 	cpu->pc = 0;
 	cpu->bi_di = (BI_DI){0, 0};
+	cpu->bi_di.ri = 4096;
 	cpu->di_ex = (DI_EX){0};
+	cpu->di_ex.mem_sinais = (MemSinais){0};
+	cpu->di_ex.ex_sinais = (ExSinais){0};
 	cpu->ex_mem = (EX_MEM){0};
 	cpu->mem_wb = (MEM_WB){0};
 

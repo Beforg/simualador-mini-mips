@@ -1,6 +1,6 @@
-#include "memoria.h"
+#include "core/memoria.h"
 #include <stdbool.h>
-#include "utils.h"
+#include "utils/utils.h"
 
 
 #pragma region MEMORIA_DE_DADOS

@@ -1,9 +1,20 @@
-# Constantes para automatizar
 OUTPUT= simulador.o
+CC= gcc
+CFLAGS= -Wall -I./src
+SRC= src/main.c \
+	src/core/estatisticas.c \
+	src/core/controle.c \
+	src/core/conversor.c \
+	src/core/cpu.c \
+	src/utils/debug.c \
+	src/core/decodificador.c \
+	src/core/io.c \
+	src/core/memoria.c \
+	src/core/ula.c \
+	src/utils/utils.c
 
-# Rode make all para compilar o arquivo, o output será simulador.o
-all:	
-	gcc -o ${OUTPUT} main.c estatisticas.c controle.c conversor.c cpu.c debug.c decodificador.c io.c memoria.c ula.c utils.c -Wall
+all:
+	${CC} -o ${OUTPUT} ${SRC} ${CFLAGS}
 
 # Use make run para executar os arquivos 
 run:

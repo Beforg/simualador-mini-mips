@@ -3,12 +3,12 @@
 #include <locale.h>
 #include <stdbool.h>
 #include <string.h>
-#include "io.h"
-#include "types.h"
-#include "cpu.h"
-#include "debug.h"
-#include "memoria.h"
-#include "estatisticas.h"
+#include "core/io.h"
+#include "core/types.h"
+#include "core/cpu.h"
+#include "utils/debug.h"
+#include "core/memoria.h"
+#include "core/estatisticas.h"
 
 
 static int alterar_exibicao_do_debug();
@@ -97,7 +97,7 @@ int main(void)
 
 	 // Variável de controle do debug, por padrão, é false.
     setlocale(LC_ALL, ""); // netoe1: Suporte a acentos
-    reset_estatisticas();
+    reset_estatisticas(&cpu);
     carregar_menu_principal();
     
     return EXIT_SUCCESS; // EXIT_SUCCESS é um label definido para 0.
@@ -208,11 +208,11 @@ void carregar_menu_principal()
             scanf("%d",&sub_aux);
 
             if(sub_aux == 1){
-                mostrar_estatisticas();
+                mostrar_estatisticas(&cpu);
             }
             else if(sub_aux == 2){
     
-                reset_estatisticas();
+                reset_estatisticas(&cpu);
                 puts("mini-mips: as estatísticas foram resetadas com sucesso!");
             }
             else if(sub_aux == 0){

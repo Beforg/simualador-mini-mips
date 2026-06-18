@@ -1,9 +1,9 @@
 #ifndef MEMORIA_H
 #define MEMORIA_H
-#include "types.h"
+#include "core/types.h"
 #include <stdint.h>
 #include <stdio.h>
-#include "utils.h"
+#include "utils/utils.h"
 
 #pragma region CONSTANTES
 // Região para declaração de constantes
