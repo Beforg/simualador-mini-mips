@@ -1,7 +1,7 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include "types.h"
+#include "core/types.h"
 #include <stdint.h>
 #include <stdbool.h>
     

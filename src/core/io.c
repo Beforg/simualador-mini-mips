@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
-#include "io.h"
-#include "utils.h"
-#include "conversor.h"
-#include "decodificador.h"
+#include "core/io.h"
+#include "utils/utils.h"
+#include "core/conversor.h"
+#include "core/decodificador.h"
 
 /* Auxiliares de Leitura */
 // static void verificar_erro_ao_abrir_arquivo(FILE *file);
@@ -58,6 +58,7 @@ static void ler_arquivo_de_instrucoes(FILE *file, uint16_t *memoria_de_instrucoe
         
         linha[strcspn(linha, "\n")] = '\0';
 		if (strlen(linha) == 0) {
+
 			continue;
 		}
 		if (total_originais >= MAX_INSTRUCOES) {
@@ -68,6 +69,10 @@ static void ler_arquivo_de_instrucoes(FILE *file, uint16_t *memoria_de_instrucoe
         inserir_na_memoria_de_instrucoes(linha, memoria_de_instrucoes, &posicao_atual_memoria_de_instrucoes, map_orig_to_new, total_originais);
 		total_originais++;
 	}
+
+    for (int i = posicao_atual_memoria_de_instrucoes; i < MAX_INSTRUCOES; i++) {
+        inserir_nop(memoria_de_instrucoes, &posicao_atual_memoria_de_instrucoes);
+    }
 
     ajustar_enderecos_desvios(memoria_de_instrucoes, originais, map_orig_to_new, total_originais);
 
@@ -133,25 +138,17 @@ static void salvar_txt_logisim(FILE *file) {
 static void inserir_na_memoria_de_instrucoes(char linha[TAMANHO_LINHA], uint16_t* memoria_de_instrucoes, int *posicao, int *map_orig_to_new, int indice_original) {
      if (strlen(linha) > 0) {
          uint16_t instrucao_lida = binario_para_int16_sem_sinal(linha);
-            map_orig_to_new[indice_original] = *posicao;
+         map_orig_to_new[indice_original] = *posicao;
          memoria_de_instrucoes[*posicao] = instrucao_lida;
          uint8_t opcode = (instrucao_lida >> 12) & 0xF; // Extrai os 4 bits mais significativos
          printf("Carregado na posicao [%d]: %s (0x%04X)\n", *posicao, linha, memoria_de_instrucoes[*posicao]);
          (*posicao)++;
-        // if (opcode == OPCODE_J) {
-         //   inserir_nop(memoria_de_instrucoes, posicao);
-        // } else if (opcode == OPCODE_BEQ) {
-          //  inserir_nop(memoria_de_instrucoes, posicao);
-           // inserir_nop(memoria_de_instrucoes, posicao);
-           // } else if (opcode == OPCODE_LW) {
-           //     inserir_nop(memoria_de_instrucoes, posicao);
-        // }
-     }
+     } 
 }
 
 static void inserir_nop(uint16_t *memoria_de_instrucoes, int *posicao) {
     if (*posicao < MAX_INSTRUCOES) {
-        memoria_de_instrucoes[*posicao] = 0b0001000000000000; // NOP é representado por 0
+        memoria_de_instrucoes[*posicao] = 0b0001000000000000;
         printf("Inserido NOP na posicao [%d]\n", *posicao);
         (*posicao)++;
     } else {

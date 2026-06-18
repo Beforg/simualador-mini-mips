@@ -2,7 +2,7 @@
 # define CONTROLE_H
 
 # include <stdint.h>
-# include "types.h"
+# include "core/types.h"
 
 SinaisDeControle gerar_sinais_de_controle(uint8_t opcode, uint8_t funct);
 

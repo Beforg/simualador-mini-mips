@@ -1,5 +1,5 @@
-#include "assembler.h"  // Header do assembler.h
-#include "utils-asm.h"      // Funções secundárias para facilitar o manejo de strings e outros.
+#include "utils/utils-asm.h"
+#include "core/assembler.h"
 
 // Arquivos para leitura
 FILE *input_file = NULL;    // Ponteiro para referência do arquivo de entrada.

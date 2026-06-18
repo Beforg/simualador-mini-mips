@@ -1,7 +1,7 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-#include "cpu.h"
+#include "core/cpu.h"
 #include <stdbool.h>
 
 #define PREFIX "mini-mips"

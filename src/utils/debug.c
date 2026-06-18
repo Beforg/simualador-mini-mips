@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "memoria.h"
-#include "debug.h"
-#include "utils.h"
+#include "core/memoria.h"
+#include "utils/debug.h"
+#include "utils/utils.h"
 // Variável de controle do debug, por padrão, é false.
 static unsigned int debugAtivado = false;
 
@@ -293,10 +293,10 @@ void debug_geral(const InstrucaoDecodificada inst,
 static void debug_pipeline_snapshot(const CPU *cpu, int opcao, const char *titulo)
 {
     printf("\n-- %s --\n", titulo);
-    printf("ESTAGIO BI/DI: %s", cpu->bi_di.instrucao_asm[0] != '\0' ? cpu->bi_di.instrucao_asm : "add $r0,$r0,$r0");
-    printf("\nESTAGIO DI/EX: %s", cpu->di_ex.instrucao_asm[0] != '\0' ? cpu->di_ex.instrucao_asm : "add $r0,$r0,$r0");
-    printf("\nESTAGIO EX/MEM: %s", cpu->ex_mem.instrucao_asm[0] != '\0' ? cpu->ex_mem.instrucao_asm : "add $r0,$r0,$r0");
-    printf("\nESTAGIO MEM/WB: %s", cpu->mem_wb.instrucao_asm[0] != '\0' ? cpu->mem_wb.instrucao_asm : "add $r0,$r0,$r0");
+    printf("ESTAGIO BI/DI: %s", cpu->bi_di.instrucao_asm[0] != '\0' ? cpu->bi_di.instrucao_asm : "NOP");
+    printf("\nESTAGIO DI/EX: %s", cpu->di_ex.instrucao_asm[0] != '\0' ? cpu->di_ex.instrucao_asm : "NOP");
+    printf("\nESTAGIO EX/MEM: %s", cpu->ex_mem.instrucao_asm[0] != '\0' ? cpu->ex_mem.instrucao_asm : "NOP");
+    printf("\nESTAGIO MEM/WB: %s", cpu->mem_wb.instrucao_asm[0] != '\0' ? cpu->mem_wb.instrucao_asm : "NOP");
     // BI/DI
     printf("\n\nBI/DI: PC+1=");
     if (opcao == 1)

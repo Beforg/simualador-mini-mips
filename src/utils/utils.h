@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <string.h>
-# include "types.h"
+# include "core/types.h"
 
 void print_int_4bits(int int_generico);
 void print_int_3bits(int int_generico);
