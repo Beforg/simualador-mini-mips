@@ -11,11 +11,16 @@ SRC= src/main.c \
 	src/core/io.c \
 	src/core/memoria.c \
 	src/core/ula.c \
-	src/utils/utils.c
+	src/utils/utils.c \
+	src/core/assembler.c \
+	src/utils/utils-asm.c \
+	src/utils/ui.c
+
+CFLAGS += $(shell pkg-config --cflags ncurses)
+LDLIBS += $(shell pkg-config --libs ncurses)
 
 all:
-	${CC} -o ${OUTPUT} ${SRC} ${CFLAGS}
-
+	$(CC) -o $(OUTPUT) $(SRC) $(CFLAGS) $(LDLIBS) -lncursesw
 # Use make run para executar os arquivos 
 run:
 	./${OUTPUT} 
