@@ -6,6 +6,7 @@
 #include "core/io.h"
 #include "core/types.h"
 #include "core/cpu.h"
+#include <ncurses.h>
 #include "utils/debug.h"
 #include "core/memoria.h"
 #include "core/estatisticas.h"
