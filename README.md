@@ -1,6 +1,9 @@
 # MINI-MIPS 8 Bits
 Simulador didatico de um processador Mini-MIPS de 8 bits.
 
+Datapath (MIPS 32bits)
+![](assets/datapath.png)
+
 ## Visao geral
 Projeto da disciplina PI II, com implementacoes de arquitetura monociclo,
 multiciclo e pipeline. Inclui assembler, simulador e utilitarios para testes.
